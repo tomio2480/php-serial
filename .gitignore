@@ -1,0 +1,13 @@
+/vendor/
+/coverage/
+.env
+.phpunit.result.cache
+composer.lock
+
+# 開発用デバッグファイル
+otameshi.php
+examples/debug.php
+examples/test_*.php
+examples/arduino/led_control_9600/
+.vscode/
+tools/

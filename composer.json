@@ -1,0 +1,33 @@
+{
+    "name": "tomio/php-serial",
+    "description": "Cross-platform PHP library for serial port communication with microcontrollers",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["serial", "serialport", "communication", "microcontroller", "arduino"],
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "squizlabs/php_codesniffer": "^3.7",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "PhpSerial\\": "src/PhpSerial/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PhpSerial\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "cs:check": "phpcs --standard=PSR12 src tests",
+        "cs:fix": "phpcbf --standard=PSR12 src tests"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

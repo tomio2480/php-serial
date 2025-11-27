@@ -1,5 +1,5 @@
 {
-    "name": "tomio/php-serial",
+    "name": "tomio2480/php-serial",
     "description": "Cross-platform PHP library for serial port communication with microcontrollers",
     "type": "library",
     "license": "MIT",

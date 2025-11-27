@@ -15,7 +15,7 @@ Windows、Mac、Linuxで動作し、Pure PHP実装。
 ## インストール
 
 ```bash
-composer require tomio/php-serial
+composer require tomio2480/php-serial
 ```
 
 ## 基本的な使い方

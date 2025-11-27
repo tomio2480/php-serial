@@ -31,18 +31,18 @@ class Windows implements PlatformInterface
 
         $parity = $parityMap[$config->getParity()] ?? 'n';
 
+        // セキュリティ: すべてのパラメータを個別にエスケープ
         // mode コマンドの形式: mode COM1: BAUD=9600 PARITY=n DATA=8 STOP=1
-        // Windows環境でcmd.exeを明示的に使用
         $modeCommand = sprintf(
-            'mode %s: BAUD=%d PARITY=%s DATA=%d STOP=%d',
-            $device,
-            $config->getBaudRate(),
-            $parity,
-            $config->getDataBits(),
-            $config->getStopBits()
+            'mode %s: BAUD=%s PARITY=%s DATA=%s STOP=%s',
+            escapeshellarg($device),
+            escapeshellarg((string)$config->getBaudRate()),
+            escapeshellarg($parity),
+            escapeshellarg((string)$config->getDataBits()),
+            escapeshellarg((string)$config->getStopBits())
         );
 
-        $command = 'cmd.exe /c ' . escapeshellarg($modeCommand);
+        $command = 'cmd.exe /c ' . $modeCommand;
 
         exec($command . ' 2>&1', $output, $returnCode);
 

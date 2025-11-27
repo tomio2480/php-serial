@@ -35,11 +35,12 @@ class Unix implements PlatformInterface
         $parity = $parityMap[$config->getParity()];
         $stopBits = $stopBitsMap[$config->getStopBits()];
 
+        // セキュリティ: 数値パラメータも明示的にエスケープ
         $command = sprintf(
-            'stty -F %s %d cs%d %s %s',
+            'stty -F %s %s cs%s %s %s',
             escapeshellarg($device),
-            $config->getBaudRate(),
-            $config->getDataBits(),
+            escapeshellarg((string)$config->getBaudRate()),
+            escapeshellarg((string)$config->getDataBits()),
             $parity,
             $stopBits
         );

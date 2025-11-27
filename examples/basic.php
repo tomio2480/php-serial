@@ -20,6 +20,25 @@ if (!$device) {
     exit(1);
 }
 
+// セキュリティ: 環境変数から取得したデバイス名を事前に検証
+// Unix系の場合
+if (PHP_OS_FAMILY === 'Linux' || PHP_OS_FAMILY === 'Darwin') {
+    if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#', $device)) {
+        echo "Error: Invalid Unix device path: {$device}\n";
+        echo "Expected format: /dev/ttyUSB0, /dev/tty.usbserial, etc.\n";
+        exit(1);
+    }
+}
+
+// Windowsの場合
+if (PHP_OS_FAMILY === 'Windows') {
+    if (!preg_match('/^COM\d+$/i', $device)) {
+        echo "Error: Invalid Windows COM port name: {$device}\n";
+        echo "Expected format: COM1, COM2, etc.\n";
+        exit(1);
+    }
+}
+
 try {
     $config = new Configuration(
         baudRate: 9600,

@@ -13,7 +13,10 @@ class Unix implements PlatformInterface
     {
         if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#', $device)) {
             throw new RuntimeException(
-                sprintf('Invalid Unix device path: %s (expected format: /dev/ttyUSB0, /dev/tty.usbserial, etc.)', $device)
+                sprintf(
+                    'Invalid Unix device path: %s (expected format: /dev/ttyUSB0, /dev/tty.usbserial, etc.)',
+                    $device
+                )
             );
         }
     }

@@ -4,6 +4,16 @@
     "type": "library",
     "license": "MIT",
     "keywords": ["serial", "serialport", "communication", "microcontroller", "arduino"],
+    "homepage": "https://github.com/tomio2480/php-serial",
+    "support": {
+        "issues": "https://github.com/tomio2480/php-serial/issues",
+        "source": "https://github.com/tomio2480/php-serial"
+    },
+    "authors": [
+        {
+            "name": "tomio2480"
+        }
+    ],
     "require": {
         "php": "^8.1"
     },

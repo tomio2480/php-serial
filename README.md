@@ -182,6 +182,27 @@ composer test
 基本的な使用例は[examples/basic.php](examples/basic.php)を参照。
 複数コマンド送信の例は[examples/advanced.php](examples/advanced.php)を参照。
 
+## 開発
+
+### 品質確認
+
+すべての品質チェックを一度に実行:
+
+```bash
+composer qa
+```
+
+個別チェック:
+
+```bash
+composer cs:check      # PSR-12準拠チェック
+composer cs:fixer      # コードスタイルチェック
+composer stan          # PHPStan静的解析 (レベル8)
+composer test          # テスト実行
+```
+
+詳細は[CONTRIBUTING.md](CONTRIBUTING.md)を参照してください。
+
 ## ライセンス
 
 MIT

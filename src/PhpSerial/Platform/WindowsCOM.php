@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace PhpSerial\Platform;
 
+use COM;
 use PhpSerial\Configuration;
 use RuntimeException;
-use COM;
 
 /**
  * Windows COM implementation for serial port communication

@@ -36,10 +36,10 @@ class Windows implements PlatformInterface
         $modeCommand = sprintf(
             'mode %s: BAUD=%s PARITY=%s DATA=%s STOP=%s',
             escapeshellarg($device),
-            escapeshellarg((string)$config->getBaudRate()),
+            escapeshellarg((string) $config->getBaudRate()),
             escapeshellarg($parity),
-            escapeshellarg((string)$config->getDataBits()),
-            escapeshellarg((string)$config->getStopBits())
+            escapeshellarg((string) $config->getDataBits()),
+            escapeshellarg((string) $config->getStopBits())
         );
 
         $command = 'cmd.exe /c ' . $modeCommand;
@@ -55,8 +55,6 @@ class Windows implements PlatformInterface
         // 設定が反映されるまで少し待機
         usleep(100000); // 100ms
     }
-
-    private mixed $winHandle = null;
 
     public function open(string $device): mixed
     {
@@ -74,17 +72,6 @@ class Windows implements PlatformInterface
         stream_set_blocking($handle, false);
 
         return $handle;
-    }
-
-    private function applyConfiguration(mixed $handle, Configuration $config): void
-    {
-        // PHPのfopen後、Windows APIを使ってボーレートを設定
-        // stream_get_meta_dataからハンドルを取得することはできないため、
-        // PHPレベルでの設定は限定的
-
-        // 代替案: fopenではなく、Windows APIで直接ポートを開く
-        // 現時点ではPHP標準機能の制約により、mode コマンドに頼るしかない
-        // 実用的な解決策は別途実装が必要
     }
 
     public function close(mixed $handle): void
@@ -113,6 +100,10 @@ class Windows implements PlatformInterface
     {
         if (!is_resource($handle)) {
             throw new RuntimeException('Invalid handle');
+        }
+
+        if ($length < 1) {
+            throw new RuntimeException('Length must be at least 1');
         }
 
         return fread($handle, $length);

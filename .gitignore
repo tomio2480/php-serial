@@ -4,6 +4,10 @@
 .phpunit.result.cache
 composer.lock
 
+# 品質保証ツールのキャッシュ
+.php-cs-fixer.cache
+/var/cache/phpstan/
+
 # 開発用デバッグファイル
 otameshi.php
 examples/debug.php

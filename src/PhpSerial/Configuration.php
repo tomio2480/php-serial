@@ -15,7 +15,7 @@ class Configuration
 
     private const VALID_BAUD_RATES = [
         110, 300, 600, 1200, 2400, 4800, 9600,
-        14400, 19200, 38400, 57600, 115200, 230400
+        14400, 19200, 38400, 57600, 115200, 230400,
     ];
 
     private const VALID_DATA_BITS = [5, 6, 7, 8];
@@ -23,12 +23,12 @@ class Configuration
     private const VALID_PARITIES = [
         self::PARITY_NONE,
         self::PARITY_ODD,
-        self::PARITY_EVEN
+        self::PARITY_EVEN,
     ];
 
     private const VALID_STOP_BITS = [
         self::STOP_BITS_1,
-        self::STOP_BITS_2
+        self::STOP_BITS_2,
     ];
 
     public function __construct(
@@ -76,6 +76,7 @@ class Configuration
     {
         $this->baudRate = $baudRate;
         $this->validate();
+
         return $this;
     }
 
@@ -88,6 +89,7 @@ class Configuration
     {
         $this->dataBits = $dataBits;
         $this->validate();
+
         return $this;
     }
 
@@ -100,6 +102,7 @@ class Configuration
     {
         $this->parity = $parity;
         $this->validate();
+
         return $this;
     }
 
@@ -112,6 +115,7 @@ class Configuration
     {
         $this->stopBits = $stopBits;
         $this->validate();
+
         return $this;
     }
 }

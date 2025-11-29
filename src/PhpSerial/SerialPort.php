@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace PhpSerial;
 
 use PhpSerial\Platform\PlatformInterface;
+use PhpSerial\Platform\Unix;
 use PhpSerial\Platform\Windows;
 use PhpSerial\Platform\WindowsFFI;
-use PhpSerial\Platform\Unix;
 use RuntimeException;
 
 class SerialPort
@@ -18,9 +18,8 @@ class SerialPort
 
     public function __construct(
         private string $device,
-        private ?Configuration $config = null
+        private Configuration $config = new Configuration()
     ) {
-        $this->config ??= new Configuration();
         $this->platform = $this->detectPlatform();
     }
 
@@ -39,12 +38,7 @@ class SerialPort
     {
         // FFI が利用可能であれば WindowsFFI を使用
         if (extension_loaded('ffi')) {
-            try {
-                return new WindowsFFI();
-            } catch (\Exception $e) {
-                // FFI が使えない場合は従来の Windows 実装にフォールバック
-                error_log('WindowsFFI initialization failed: ' . $e->getMessage());
-            }
+            return new WindowsFFI();
         }
 
         // FFI が使えない場合は従来の実装
@@ -78,6 +72,7 @@ class SerialPort
     public function write(string $data): int
     {
         $this->ensureOpen();
+
         return $this->platform->write($this->handle, $data);
     }
 
@@ -126,6 +121,7 @@ class SerialPort
         // 改行で分割して最初の行を返す
         if ($foundNewline) {
             $lines = explode("\n", $buffer, 2);
+
             return rtrim($lines[0], "\r");
         }
 

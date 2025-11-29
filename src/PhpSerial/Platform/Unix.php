@@ -39,8 +39,8 @@ class Unix implements PlatformInterface
         $command = sprintf(
             'stty -F %s %s cs%s %s %s',
             escapeshellarg($device),
-            escapeshellarg((string)$config->getBaudRate()),
-            escapeshellarg((string)$config->getDataBits()),
+            escapeshellarg((string) $config->getBaudRate()),
+            escapeshellarg((string) $config->getDataBits()),
             $parity,
             $stopBits
         );
@@ -95,6 +95,10 @@ class Unix implements PlatformInterface
     {
         if (!is_resource($handle)) {
             throw new RuntimeException('Invalid handle');
+        }
+
+        if ($length < 1) {
+            throw new RuntimeException('Length must be at least 1');
         }
 
         return fread($handle, $length);

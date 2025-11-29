@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace PhpSerial\Tests;
 
+use InvalidArgumentException;
 use PhpSerial\Configuration;
 use PHPUnit\Framework\TestCase;
-use InvalidArgumentException;
 
 class ConfigurationTest extends TestCase
 {

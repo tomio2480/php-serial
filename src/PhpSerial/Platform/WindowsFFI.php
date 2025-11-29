@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace PhpSerial\Platform;
 
+use FFI;
 use PhpSerial\Configuration;
 use RuntimeException;
-use FFI;
 
 /**
  * Windows implementation using FFI to call Windows API directly
@@ -121,6 +121,10 @@ class WindowsFFI implements PlatformInterface
         $this->validateDevice($device);
         $this->initFFI();
 
+        if ($this->ffi === null) {
+            throw new RuntimeException('FFI initialization failed');
+        }
+
         // Open COM port using Windows API
         $devicePath = "\\\\.\\{$device}";
 
@@ -154,6 +158,10 @@ class WindowsFFI implements PlatformInterface
     {
         if ($this->handle === null) {
             throw new RuntimeException('Port is not open');
+        }
+
+        if ($this->ffi === null) {
+            throw new RuntimeException('FFI is not initialized');
         }
 
         // Get current DCB
@@ -205,8 +213,12 @@ class WindowsFFI implements PlatformInterface
 
     public function write(mixed $handle, string $data): int
     {
-        if ($handle === null || $this->ffi === null) {
+        if ($handle === null) {
             throw new RuntimeException('Invalid handle');
+        }
+
+        if ($this->ffi === null) {
+            throw new RuntimeException('FFI is not initialized');
         }
 
         $buffer = FFI::new('char[' . strlen($data) . ']', false);
@@ -223,8 +235,12 @@ class WindowsFFI implements PlatformInterface
 
     public function read(mixed $handle, int $length): string|false
     {
-        if ($handle === null || $this->ffi === null) {
+        if ($handle === null) {
             throw new RuntimeException('Invalid handle');
+        }
+
+        if ($this->ffi === null) {
+            throw new RuntimeException('FFI is not initialized');
         }
 
         $buffer = $this->ffi->new('char[' . $length . ']');

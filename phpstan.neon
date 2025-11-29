@@ -1,0 +1,15 @@
+parameters:
+    level: 8
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - tests/bootstrap.php
+    ignoreErrors:
+        # FFI関連: 動的にメソッドが追加されるため静的解析では検出できない
+        - '#Call to an undefined method FFI::(CloseHandle|WriteFile|ReadFile|GetCommState|SetCommState|SetCommTimeouts|CreateFileA)\(\)#'
+        # FFI\CData関連: C構造体のフィールドは実行時に決定されるため静的解析では検出できない
+        - '#Access to an undefined property FFI\\CData::\$#'
+        # WindowsCOM.phpは未実装クラス
+        - '#Property PhpSerial\\Platform\\WindowsCOM::\$port .* is never assigned object#'
+    tmpDir: var/cache/phpstan

@@ -14,42 +14,16 @@ Windows、Mac、Linuxで動作し、Pure PHP実装。
 
 ## インストール
 
-### GitHubリポジトリから直接インストール（Packagist未登録）
-
-現在このライブラリはPackagistに未登録のため、GitHubリポジトリから直接インストールします。
-
-プロジェクトの`composer.json`に以下を追加:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/tomio2480/php-serial.git"
-        }
-    ],
-    "require": {
-        "tomio2480/php-serial": "dev-main"
-    }
-}
-```
-
-その後、以下のコマンドでインストール:
-
-```bash
-composer install
-```
-
-または既存プロジェクトに追加:
-
-```bash
-composer require tomio2480/php-serial:dev-main
-```
-
-### 将来的にPackagist登録後
+Composerを使用してインストール:
 
 ```bash
 composer require tomio2480/php-serial
+```
+
+特定のバージョンを指定する場合:
+
+```bash
+composer require tomio2480/php-serial:^1.3
 ```
 
 ## 基本的な使い方

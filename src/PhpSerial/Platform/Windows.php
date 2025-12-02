@@ -70,20 +70,21 @@ EOT;
 
         $parity = $parityMap[$config->getParity()] ?? 'n';
 
-        // セキュリティ: 数値パラメータの型と範囲を明示的に検証
+        // セキュリティ: 数値パラメータの範囲を検証
+        // Configuration クラスで型は保証されているため is_int() チェックは不要
         $baudRate = $config->getBaudRate();
         $dataBits = $config->getDataBits();
         $stopBits = $config->getStopBits();
 
-        if (!is_int($baudRate) || $baudRate <= 0) {
+        if ($baudRate <= 0) {
             throw new RuntimeException('Invalid baud rate');
         }
 
-        if (!is_int($dataBits) || $dataBits < 5 || $dataBits > 8) {
+        if ($dataBits < 5 || $dataBits > 8) {
             throw new RuntimeException('Invalid data bits');
         }
 
-        if (!is_int($stopBits) || ($stopBits !== 1 && $stopBits !== 2)) {
+        if ($stopBits !== 1 && $stopBits !== 2) {
             throw new RuntimeException('Invalid stop bits');
         }
 

@@ -93,11 +93,13 @@ EOT;
             throw new RuntimeException('Invalid parity');
         }
 
-        // mode コマンドの形式: mode COM1: BAUD=9600 PARITY=n DATA=8 STOP=1
+        // mode コマンドの形式: mode COM1: BAUD=9600 PARITY=n DATA=8 STOP=1 to=on xon=off
         // escapeshellarg() を使うとダブルクォーテーションが追加されてコマンドが失敗する
         // デバイス名とパラメータは上記で厳格にバリデーション済みなので直接使用
+        // to=on: タイムアウトを有効にして読み取り時のハングを防止
+        // xon=off: XON/XOFFフロー制御を無効化（Arduinoでは通常不要）
         $modeCommand = sprintf(
-            'mode %s: BAUD=%d PARITY=%s DATA=%d STOP=%d',
+            'mode %s: BAUD=%d PARITY=%s DATA=%d STOP=%d to=on xon=off',
             $device,
             $baudRate,
             $parity,
@@ -132,12 +134,13 @@ EOT;
             );
         }
 
-        // Windows環境ではブロッキングモードで動作させる
-        // ノンブロッキングモードでは受信がうまく機能しないことがある
-        stream_set_blocking($handle, true);
+        // Windows環境ではノンブロッキングモードで動作させる
+        // ブロッキングモードだと fread() が無限待機する問題がある
+        stream_set_blocking($handle, false);
 
-        // タイムアウトを設定（読み取り時に無限待機を防ぐ）
-        stream_set_timeout($handle, 0, 100000); // 100ms
+        // 読み取りタイムアウトを設定（秒, マイクロ秒）
+        // ノンブロッキングモードでは無視されるが、念のため設定
+        stream_set_timeout($handle, 2, 0);
 
         return $handle;
     }
@@ -174,6 +177,33 @@ EOT;
             throw new RuntimeException('Length must be at least 1');
         }
 
-        return fread($handle, $length);
+        // Windows環境では fread() がハングする問題があるため、
+        // 1バイトずつ読み取って指定された長さまで蓄積する
+        $buffer = '';
+        $startTime = microtime(true);
+        $timeoutMs = 100; // 100ms timeout
+
+        for ($i = 0; $i < $length; $i++) {
+            // 1バイト読み取り
+            $char = @fgetc($handle);
+
+            if ($char === false) {
+                // データなし、またはエラー
+                // タイムアウトチェック
+                if ((microtime(true) - $startTime) * 1000 > $timeoutMs) {
+                    break;
+                }
+                // データがない場合は次のバイトへ
+                break;
+            }
+
+            $buffer .= $char;
+
+            // データが来たらタイマーをリセット
+            $startTime = microtime(true);
+        }
+
+        // バッファが空の場合は空文字列を返す
+        return $buffer;
     }
 }

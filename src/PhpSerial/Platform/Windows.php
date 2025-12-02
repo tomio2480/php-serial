@@ -182,7 +182,7 @@ EOT;
         if (!self::$readWarningShown) {
             fwrite(
                 STDERR,
-                "Warning: Data reception does not work in FFI OFF environment. " .
+                'Warning: Data reception does not work in FFI OFF environment. ' .
                 "Enable FFI for bidirectional communication.\n"
             );
             self::$readWarningShown = true;

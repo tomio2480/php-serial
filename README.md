@@ -117,12 +117,16 @@ $config
 $port = new SerialPort('COM3');
 ```
 
-**Windows固有の注意事項:**
-- ボーレート等の設定はArduino書き込み時の設定が使用されます
-- 異なるボーレートが必要な場合は、事前に`mode`コマンドで設定してください：
-  ```powershell
-  mode COM3 BAUD=115200 PARITY=n DATA=8 STOP=1
-  ```
+**重要: Windows環境ではPHP FFI拡張の有効化を強く推奨します**
+
+正確で安定したシリアル通信を実現するため、`php.ini`でFFIを有効にしてください：
+```ini
+extension=ffi
+ffi.enable=true
+```
+
+FFI無効時はフォールバック実装が使用されますが、通信精度と安定性が低下します。
+詳細は[docs/WINDOWS_FFI_SETUP.md](docs/WINDOWS_FFI_SETUP.md)を参照してください。
 
 ### Linux
 ```php

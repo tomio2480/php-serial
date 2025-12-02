@@ -9,6 +9,45 @@ use RuntimeException;
 
 class Windows implements PlatformInterface
 {
+    private static bool $warningShown = false;
+
+    public function __construct()
+    {
+        // FFI が無効な場合は警告を表示（初回のみ）
+        if (!self::$warningShown) {
+            $this->showFFIWarning();
+            self::$warningShown = true;
+        }
+    }
+
+    private function showFFIWarning(): void
+    {
+        $message = <<<'EOT'
+
+Warning: PHP FFI extension is not enabled.
+警告: PHP FFI 拡張が無効です。
+
+For optimal serial communication on Windows, enable FFI in php.ini:
+Windowsで最適なシリアル通信を行うには、php.iniでFFIを有効にしてください：
+
+  extension=ffi
+  ffi.enable=true
+
+Current limitations with FFI disabled:
+FFI無効時の制限事項：
+  - Lower communication accuracy and stability
+  - 通信精度と安定性が低下します
+  - Dependency on Windows 'mode' command
+  - Windows 'mode'コマンドへの依存
+
+For details, see: docs/WINDOWS_FFI_SETUP.md
+詳細は docs/WINDOWS_FFI_SETUP.md を参照してください
+
+EOT;
+        // stderr に出力（通常の出力と区別するため）
+        fwrite(STDERR, $message);
+    }
+
     private function validateDevice(string $device): void
     {
         if (!preg_match('/^COM\d+$/i', $device)) {

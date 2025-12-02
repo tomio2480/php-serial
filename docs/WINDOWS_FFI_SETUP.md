@@ -2,6 +2,22 @@
 
 PHP の FFI（Foreign Function Interface）を有効化することで、Windows API を直接呼び出して正確なボーレート設定が可能になります。
 
+## なぜ FFI が必要なのか
+
+Windows 環境で php-serial を使用する際、FFI 拡張が無効だと以下の警告が表示されます。
+
+```
+Warning: PHP FFI extension is not enabled.
+警告: PHP FFI 拡張が無効です。
+```
+
+FFI が無効な場合、以下の制限があります。
+
+- **データ受信ができません**（送信のみ可能）
+- 通信精度と安定性が低下します
+
+双方向通信を実現するには、php.ini で FFI を有効化する必要があります。
+
 ## 必要な設定
 
 ### 1. php.ini の編集
@@ -17,7 +33,17 @@ Configuration File (php.ini) Path: C:\php8.5
 Loaded Configuration File:         C:\php8.5\php.ini
 ```
 
-### 2. FFI 拡張の有効化
+### 2. extension_dir の確認（通常は不要）
+
+php.ini 内で `extension_dir` が正しく設定されているか確認します。
+
+```ini
+extension_dir = "C:\php8.5\ext"
+```
+
+通常は PHP インストール時に自動設定されますが、拡張が読み込めない場合は確認してください。
+
+### 3. FFI 拡張の有効化
 
 `C:\php8.5\php.ini` をテキストエディタで開き、以下の行を探します。
 
@@ -31,7 +57,7 @@ Loaded Configuration File:         C:\php8.5\php.ini
 extension=ffi
 ```
 
-### 3. FFI の有効化
+### 4. FFI の有効化
 
 php.ini 内で以下の行を探します。
 
@@ -52,11 +78,11 @@ ffi.enable=true
 ffi.enable=true
 ```
 
-### 4. PowerShell/コマンドプロンプトを再起動
+### 5. PowerShell/コマンドプロンプトを再起動
 
 設定を反映するため、ターミナルを再起動します。
 
-### 5. 確認
+### 6. 確認
 
 ```bash
 php examples/test_ffi.php

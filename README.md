@@ -125,7 +125,7 @@ extension=ffi
 ffi.enable=true
 ```
 
-FFI無効時はフォールバック実装が使用されますが、通信精度と安定性が低下します。
+FFI無効時はフォールバック実装が使用されますが、**データ受信が動作せず送信のみ可能**となります。
 詳細は[docs/WINDOWS_FFI_SETUP.md](docs/WINDOWS_FFI_SETUP.md)を参照してください。
 
 ### Linux

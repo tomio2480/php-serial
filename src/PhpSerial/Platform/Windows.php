@@ -10,6 +10,7 @@ use RuntimeException;
 class Windows implements PlatformInterface
 {
     private static bool $warningShown = false;
+    private static bool $readWarningShown = false;
 
     public function __construct()
     {
@@ -175,6 +176,12 @@ EOT;
 
         if ($length < 1) {
             throw new RuntimeException('Length must be at least 1');
+        }
+
+        // FFI OFF 環境での受信不可の警告（初回のみ）
+        if (!self::$readWarningShown) {
+            fwrite(STDERR, "Warning: Data reception does not work in FFI OFF environment. Enable FFI for bidirectional communication.\n");
+            self::$readWarningShown = true;
         }
 
         // Windows環境では fread() がハングする問題があるため、

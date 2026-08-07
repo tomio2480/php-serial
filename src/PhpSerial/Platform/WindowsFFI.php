@@ -221,7 +221,7 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('FFI is not initialized');
         }
 
-        $buffer = FFI::new('char[' . strlen($data) . ']', false);
+        $buffer = $this->ffi->new('char[' . strlen($data) . ']', false);
         FFI::memcpy($buffer, $data, strlen($data));
 
         $bytesWritten = $this->ffi->new('DWORD');

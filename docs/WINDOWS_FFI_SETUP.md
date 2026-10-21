@@ -1,5 +1,8 @@
 # Windows での FFI セットアップ
 
+<!-- 本ファイルは利用者向けの手順書のため「ですます調」で書く．既存の本文は句点「。」で統一している． -->
+<!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
+
 PHP の FFI（Foreign Function Interface）を有効化することで、Windows API を直接呼び出して正確なボーレート設定が可能になります。
 
 ## なぜ FFI が必要なのか
@@ -10,6 +13,9 @@ Windows 環境で php-serial を使用する際、FFI 拡張が無効だと以�
 Warning: PHP FFI extension is not enabled.
 警告: PHP FFI 拡張が無効です。
 ```
+
+CLI では標準エラー出力へ表示します。
+Web サーバー経由（Apache、PHP-FPM、`php -S` など）で実行した場合は、PHP のエラーログへ出力します。
 
 FFI が無効な場合、以下の制限があります。
 

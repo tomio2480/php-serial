@@ -14,13 +14,17 @@ use RuntimeException;
  */
 class WindowsFFI implements PlatformInterface
 {
+    // CreateFileA が失敗時に返す値（(HANDLE)-1）
+    private const INVALID_HANDLE_VALUE = -1;
+
     private ?FFI $ffi = null;
     private mixed $handle = null;
     private ?Configuration $config = null;
 
     private function validateDevice(string $device): void
     {
-        if (!preg_match('/^COM\d+$/i', $device)) {
+        // D 修飾子: $ を末尾の改行の手前で一致させない
+        if (!preg_match('/^COM\d+$/iD', $device)) {
             throw new RuntimeException(
                 sprintf('Invalid Windows COM port name: %s (expected format: COM1, COM2, etc.)', $device)
             );
@@ -138,7 +142,9 @@ class WindowsFFI implements PlatformInterface
             null                      // hTemplateFile
         );
 
-        if ($handle === $this->ffi->cast('HANDLE', -1)) {
+        // CData 同士の === はオブジェクトの同一性を比べ，常に偽になる．
+        // == はポインタ値を比べるため，INVALID_HANDLE_VALUE の判定にはこちらを使う．
+        if ($handle == $this->ffi->cast('HANDLE', self::INVALID_HANDLE_VALUE)) {
             throw new RuntimeException(
                 sprintf('Failed to open serial port: %s', $device)
             );
@@ -221,7 +227,8 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('FFI is not initialized');
         }
 
-        $buffer = $this->ffi->new('char[' . strlen($data) . ']', false);
+        // 所有権付きで確保し，$buffer の破棄と同時に解放させる（WriteFile は同期呼び出し）
+        $buffer = $this->ffi->new('char[' . strlen($data) . ']');
         FFI::memcpy($buffer, $data, strlen($data));
 
         $bytesWritten = $this->ffi->new('DWORD');
@@ -238,6 +245,8 @@ class WindowsFFI implements PlatformInterface
         if ($handle === null) {
             throw new RuntimeException('Invalid handle');
         }
+
+        $length = ReadLength::normalize($length);
 
         if ($this->ffi === null) {
             throw new RuntimeException('FFI is not initialized');

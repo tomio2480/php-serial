@@ -1,5 +1,8 @@
 # PHP Serial
 
+<!-- 本ファイルは利用者向けの手引きのため「ですます調」で書く．既存の本文は句点「。」で統一している． -->
+<!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
+
 PHPでマイコンとのシリアル通信を行うクロスプラットフォームライブラリ。
 
 ## 概要
@@ -11,6 +14,8 @@ Windows、Mac、Linuxで動作し、Pure PHP実装。
 
 - PHP 8.1以上
 - Windows、Linux、macOS
+
+PHP 本体のセキュリティ修正が提供されているバージョン（[サポート対象](https://www.php.net/supported-versions.php)）で、最新のパッチリリースを使うことを推奨します。
 
 ## インストール
 
@@ -55,6 +60,10 @@ echo "Received: {$response}\n";
 
 $port->close();
 ```
+
+`read(int $length = 1024)` は最大 `$length` バイトを返します。
+1 回で確保するバッファの上限は 64 KiB で、上限を超える指定は上限へ丸めます。
+1 未満を指定すると `RuntimeException` を送出します。
 
 ## 設定例
 

@@ -11,7 +11,8 @@ class Unix implements PlatformInterface
 {
     private function validateDevice(string $device): void
     {
-        if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#', $device)) {
+        // D 修飾子: $ を末尾の改行の手前で一致させない
+        if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#D', $device)) {
             throw new RuntimeException(
                 sprintf(
                     'Invalid Unix device path: %s (expected format: /dev/ttyUSB0, /dev/tty.usbserial, etc.)',
@@ -100,10 +101,6 @@ class Unix implements PlatformInterface
             throw new RuntimeException('Invalid handle');
         }
 
-        if ($length < 1) {
-            throw new RuntimeException('Length must be at least 1');
-        }
-
-        return fread($handle, $length);
+        return fread($handle, ReadLength::normalize($length));
     }
 }

@@ -239,6 +239,8 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('Invalid handle');
         }
 
+        $length = ReadLength::normalize($length);
+
         if ($this->ffi === null) {
             throw new RuntimeException('FFI is not initialized');
         }

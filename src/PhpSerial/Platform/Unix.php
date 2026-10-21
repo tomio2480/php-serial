@@ -100,10 +100,6 @@ class Unix implements PlatformInterface
             throw new RuntimeException('Invalid handle');
         }
 
-        if ($length < 1) {
-            throw new RuntimeException('Length must be at least 1');
-        }
-
-        return fread($handle, $length);
+        return fread($handle, ReadLength::normalize($length));
     }
 }

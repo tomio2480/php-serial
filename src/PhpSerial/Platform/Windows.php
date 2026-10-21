@@ -189,9 +189,7 @@ EOT;
             throw new RuntimeException('Invalid handle');
         }
 
-        if ($length < 1) {
-            throw new RuntimeException('Length must be at least 1');
-        }
+        $length = ReadLength::normalize($length);
 
         // FFI OFF 環境での受信不可の警告（初回のみ）
         if (!self::$readWarningShown) {

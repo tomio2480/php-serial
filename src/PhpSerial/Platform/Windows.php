@@ -66,7 +66,8 @@ EOT;
 
     private function validateDevice(string $device): void
     {
-        if (!preg_match('/^COM\d+$/i', $device)) {
+        // D 修飾子: $ を末尾の改行の手前で一致させない
+        if (!preg_match('/^COM\d+$/iD', $device)) {
             throw new RuntimeException(
                 sprintf('Invalid Windows COM port name: %s (expected format: COM1, COM2, etc.)', $device)
             );

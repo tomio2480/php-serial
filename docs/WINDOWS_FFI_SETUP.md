@@ -11,6 +11,9 @@ Warning: PHP FFI extension is not enabled.
 警告: PHP FFI 拡張が無効です。
 ```
 
+CLI では標準エラー出力へ表示します。
+Web サーバー経由（Apache、PHP-FPM、`php -S` など）で実行した場合は、PHP のエラーログへ出力します。
+
 FFI が無効な場合、以下の制限があります。
 
 - **データ受信ができません**（送信のみ可能）

@@ -12,6 +12,8 @@ Windows、Mac、Linuxで動作し、Pure PHP実装。
 - PHP 8.1以上
 - Windows、Linux、macOS
 
+PHP本体のセキュリティ修正が提供されているバージョン（[サポート対象](https://www.php.net/supported-versions.php)）で、最新のパッチリリースを使うことを推奨します。
+
 ## インストール
 
 Composerを使用してインストール:
@@ -55,6 +57,10 @@ echo "Received: {$response}\n";
 
 $port->close();
 ```
+
+`read(int $length = 1024)` は最大 `$length` バイトを返します。
+1回で確保するバッファの上限は64 KiB（`PhpSerial\Platform\ReadLength::MAX`）で、上限を超える指定は上限へ丸めます。
+1未満を指定すると `RuntimeException` を送出します。
 
 ## 設定例
 

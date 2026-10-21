@@ -14,6 +14,9 @@ use RuntimeException;
  */
 class WindowsFFI implements PlatformInterface
 {
+    // CreateFileA が失敗時に返す値（(HANDLE)-1）
+    private const INVALID_HANDLE_VALUE = -1;
+
     private ?FFI $ffi = null;
     private mixed $handle = null;
     private ?Configuration $config = null;
@@ -139,7 +142,9 @@ class WindowsFFI implements PlatformInterface
             null                      // hTemplateFile
         );
 
-        if ($handle === $this->ffi->cast('HANDLE', -1)) {
+        // CData 同士の === はオブジェクトの同一性を比べ，常に偽になる．
+        // == はポインタ値を比べるため，INVALID_HANDLE_VALUE の判定にはこちらを使う．
+        if ($handle == $this->ffi->cast('HANDLE', self::INVALID_HANDLE_VALUE)) {
             throw new RuntimeException(
                 sprintf('Failed to open serial port: %s', $device)
             );

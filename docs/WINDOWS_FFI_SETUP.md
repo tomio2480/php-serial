@@ -1,15 +1,16 @@
 # Windows での FFI セットアップ
 
-<!-- 本ファイルは利用者向けの手順書のため「ですます調」で書く．既存の本文は句点「。」で統一している． -->
+<!-- 本ファイルは利用者向けの手順書のため「ですます調」で書く．句点は他の文書と同じく「。」で統一している． -->
 <!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
 
-PHP の FFI（Foreign Function Interface）を有効化することで、Windows API を直接呼び出して正確なボーレート設定が可能になります。
+PHP の FFI（Foreign Function Interface）を有効化すると、Windows API を直接呼び出せます。
+これにより、ボーレートを正確に設定できます。
 
 ## なぜ FFI が必要なのか
 
 Windows 環境で php-serial を使用する際、FFI 拡張が無効だと以下の警告が表示されます。
 
-```
+```text
 Warning: PHP FFI extension is not enabled.
 警告: PHP FFI 拡張が無効です。
 ```
@@ -29,12 +30,14 @@ FFI が無効な場合、以下の制限があります。
 ### 1. php.ini の編集
 
 php.ini の場所を確認：
+
 ```bash
 php --ini
 ```
 
 出力例：
-```
+
+```text
 Configuration File (php.ini) Path: C:\php8.5
 Loaded Configuration File:         C:\php8.5\php.ini
 ```
@@ -96,7 +99,7 @@ php examples/test_ffi.php
 
 以下のように表示されれば成功：
 
-```
+```text
 PHP Version: 8.5.0
 FFI extension loaded: Yes
 FFI is available!
@@ -116,27 +119,29 @@ FFI が有効な環境では、以下の利点があります。
 FFI が無効な場合は、従来の `fopen()` 実装にフォールバックしますが、以下の制限があります。
 
 **制限事項:**
+
 - **シリアルポートからのデータ受信が正常に機能しません**
-  - PHPの`fopen()`、`fread()`、`fgetc()`、`fgets()`はWindowsのCOMポートからの読み取りに対応していません
+  - PHP の `fopen()`、`fread()`、`fgetc()`、`fgets()` は Windows の COM ポートからの読み取りに対応していません
   - データの送信は可能ですが、受信は動作しません
-- ボーレート設定の精度が低下する可能性があります
+- ボーレートを正確に設定できない場合があります
 - Windows の `mode` コマンドに依存した設定となります
 
-**重要:** FFI OFF環境では双方向通信が不可能です。送信のみ可能ですが、実用上はFFI有効化が必須です。
+**重要:** FFI OFF 環境では双方向通信が不可能です。送信のみ可能ですが、実用上は FFI 有効化が必須です。
 
 **FFI OFF 環境での限定的な使用（送信のみ）:**
 
 1. **データ送信のみの場合**
-   - `write()`メソッドは動作します
-   - `read()`、`readLine()`は動作しません
+   - `write()` メソッドは動作します
+   - `read()`、`readLine()` は動作しません
 
 2. **異なるボーレートが必要な場合**
    - 事前に `mode` コマンドでシリアルポートを設定してください：
+
    ```powershell
    mode COM3 BAUD=115200 PARITY=n DATA=8 STOP=1 to=on xon=off
    ```
 
-**推奨:** Windows環境で双方向通信が必要な場合は、**必ずFFIを有効化してください**。
+**推奨:** Windows 環境で双方向通信が必要な場合は、**必ずFFIを有効化してください**。
 
 ## トラブルシューティング
 

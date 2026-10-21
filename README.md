@@ -1,25 +1,25 @@
 # PHP Serial
 
-<!-- 本ファイルは利用者向けの手引きのため「ですます調」で書く．既存の本文は句点「。」で統一している． -->
+<!-- 本ファイルは利用者向けの手引きのため「ですます調」で書く．句点は他の文書と同じく「。」で統一している． -->
 <!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
 
-PHPでマイコンとのシリアル通信を行うクロスプラットフォームライブラリ。
+PHP でマイコンとシリアル通信するクロスプラットフォームライブラリ。
 
 ## 概要
 
-PySerialやRuby serialportのような使い勝手を提供。
-Windows、Mac、Linuxで動作し、Pure PHP実装。
+PySerial や Ruby serialport のような使い勝手を提供。
+Windows、Mac、Linux で動作し、Pure PHP 実装。
 
 ## 動作環境
 
-- PHP 8.1以上
+- PHP 8.1 以上
 - Windows、Linux、macOS
 
 PHP 本体のセキュリティ修正が提供されているバージョン（[サポート対象](https://www.php.net/supported-versions.php)）で、最新のパッチリリースを使うことを推奨します。
 
 ## インストール
 
-Composerを使用してインストール:
+Composer を使用してインストール:
 
 ```bash
 composer require tomio2480/php-serial
@@ -69,7 +69,11 @@ $port->close();
 
 ### ボーレート
 
-対応: 110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 230400
+対応するボーレート（bps）は次のとおりです。
+
+```text
+110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 230400
+```
 
 ```php
 $config = new Configuration(baudRate: 115200);
@@ -122,22 +126,25 @@ $config
 ## デバイスパス
 
 ### Windows
+
 ```php
 $port = new SerialPort('COM3');
 ```
 
-**重要: Windows環境ではPHP FFI拡張の有効化を強く推奨します**
+**重要:** Windows 環境では PHP FFI 拡張の有効化を強く推奨します。
 
-正確で安定したシリアル通信を実現するため、`php.ini`でFFIを有効にしてください：
+正確で安定したシリアル通信を実現するため、`php.ini` で FFI を有効にしてください：
+
 ```ini
 extension=ffi
 ffi.enable=true
 ```
 
-FFI無効時はフォールバック実装が使用されますが、**データ受信が動作せず送信のみ可能**となります。
-詳細は[docs/WINDOWS_FFI_SETUP.md](docs/WINDOWS_FFI_SETUP.md)を参照してください。
+FFI 無効時はフォールバック実装が使用されますが、**データ受信が動作せず送信のみ可能**となります。
+詳細は [docs/WINDOWS_FFI_SETUP.md](docs/WINDOWS_FFI_SETUP.md) を参照してください。
 
 ### Linux
+
 ```php
 $port = new SerialPort('/dev/ttyUSB0');
 // または
@@ -145,6 +152,7 @@ $port = new SerialPort('/dev/ttyACM0');
 ```
 
 ### macOS
+
 ```php
 $port = new SerialPort('/dev/tty.usbserial');
 ```
@@ -166,8 +174,8 @@ composer test
 
 ## 使用例
 
-基本的な使用例は[examples/basic.php](examples/basic.php)を参照。
-複数コマンド送信の例は[examples/advanced.php](examples/advanced.php)を参照。
+基本的な使用例は [examples/basic.php](examples/basic.php) を参照。
+複数コマンド送信の例は [examples/advanced.php](examples/advanced.php) を参照。
 
 ## 開発
 
@@ -188,7 +196,7 @@ composer stan          # PHPStan静的解析 (レベル8)
 composer test          # テスト実行
 ```
 
-詳細は[CONTRIBUTING.md](CONTRIBUTING.md)を参照してください。
+詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
 ## ライセンス
 

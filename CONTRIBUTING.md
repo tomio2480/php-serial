@@ -1,17 +1,23 @@
 # 開発ガイド
 
+<!-- 本ファイルは開発者向けの手引きのため「ですます調」で書く．句点は他の文書と同じく「。」で統一している． -->
+<!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
+
 ## 目次
 
 - [開発環境のセットアップ](#開発環境のセットアップ)
 - [品質確認手順](#品質確認手順)
-- [テストの実行](#テストの実行)
+- [PSR 準拠](#psr-準拠)
+- [コミット前の確認](#コミット前の確認)
+- [GitHub Actions](#github-actions)
 - [コントリビューション](#コントリビューション)
+- [トラブルシューティング](#トラブルシューティング)
 
 ## 開発環境のセットアップ
 
 ### 必要な環境
 
-- PHP 8.1以上
+- PHP 8.1 以上
 - Composer
 - Git
 
@@ -35,7 +41,7 @@ composer qa
 
 このコマンドは以下を順番に実行します。
 
-1. PHP_CodeSniffer (PSR-12準拠チェック)
+1. PHP_CodeSniffer (PSR-12 準拠チェック)
 2. PHP-CS-Fixer (コードスタイルチェック)
 3. PHPStan (静的解析)
 4. PHPUnit (テスト)
@@ -72,7 +78,7 @@ composer cs:fixer:fix
 
 #### 3. 静的解析 (PHPStan)
 
-型安全性とバグのチェック (レベル8):
+型安全性とバグのチェック (レベル 8):
 
 ```bash
 composer stan
@@ -90,9 +96,9 @@ composer test
 composer test:coverage
 ```
 
-## PSR準拠
+## PSR 準拠
 
-このプロジェクトは以下のPSRに準拠しています。
+このプロジェクトは以下の PSR に準拠しています。
 
 ### PSR-4 (オートロード)
 
@@ -104,7 +110,7 @@ composer validate --strict
 
 ### PSR-12 (コーディング規約)
 
-上記の`composer cs:check`で確認できます。
+上記の `composer cs:check` で確認できます。
 
 ## コミット前の確認
 
@@ -118,14 +124,14 @@ composer qa
 
 ## GitHub Actions
 
-プルリクエストやpush時に自動で以下が実行されます。
+Pull Request の作成時と push 時に、以下が自動で実行されます。
 
-- PHP 8.1, 8.2, 8.3, 8.4, 8.5での動作確認
-- Windows, Linux, macOSでの動作確認
+- PHP 8.1〜8.5 での動作確認
+- Windows, Linux, macOS での動作確認
 - コード品質チェック (PSR-12, PHPStan)
 - テスト実行
 
-詳細は[.github/workflows/ci.yml](.github/workflows/ci.yml)を参照してください。
+詳細は [.github/workflows/ci.yml](.github/workflows/ci.yml) を参照してください。
 
 ## コントリビューション
 
@@ -133,28 +139,28 @@ composer qa
 2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
 3. 変更をコミット (`git commit -m 'Add amazing feature'`)
 4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
+5. Pull Request を作成
 
-### プルリクエストの要件
+### Pull Request の要件
 
 - すべての品質チェックがパス (`composer qa`)
 - 新機能にはテストを追加
-- PSR-12, PSR-4に準拠
-- PHPStan レベル8でエラーなし
+- PSR-12, PSR-4 に準拠
+- PHPStan レベル 8 でエラーなし
 
 ## トラブルシューティング
 
 ### PHPStanでFFI関連のエラーが出る
 
-FFI関連のエラーは`phpstan.neon`で適切に無視設定されています。
+FFI 関連のエラーは `phpstan.neon` で適切に無視設定されています。
 新たなエラーが出た場合は、以下を確認してください。
 
-- FFIのメソッドは動的に追加されるため、静的解析では検出できません
-- FFI\CDataのプロパティも実行時に決定されます
+- FFI のメソッドは動的に追加されるため、静的解析では検出できません
+- FFI\CData のプロパティも実行時に決定されます
 
 これらは正常な動作です。
 
 ### PHP-CS-Fixerでバージョン警告が出る
 
-開発環境のPHPバージョンが8.1より新しい場合、警告が表示されることがあります。
+開発環境の PHP が 8.1 より新しいと、PHP-CS-Fixer は警告を表示することがあります。
 これは情報提供のみで、エラーではありません。

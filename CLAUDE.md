@@ -129,6 +129,10 @@ composer cs:fix
 - **sanchescom/php-serial**: PHP 7リファクタ版、モダンな実装
 - **PySerial**: Python実装、APIデザインの参考
 
+## ドキュメントの文体
+
+- `README.md` と `docs/` は利用者向けの手引きのため「ですます調」・句点「。」で書く．textlint の該当ルールはファイル先頭のコメントで無効化する．
+
 ## 開発の進め方
 
 1. 最小限の機能で動作させる（open/close/read/write）

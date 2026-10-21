@@ -1,5 +1,8 @@
 # Windows での FFI セットアップ
 
+<!-- 本ファイルは利用者向けの手順書のため「ですます調」で書く．既存の本文は句点「。」で統一している． -->
+<!-- textlint-disable ja-technical-writing/no-mix-dearu-desumasu, ja-technical-writing/ja-no-mixed-period -->
+
 PHP の FFI（Foreign Function Interface）を有効化することで、Windows API を直接呼び出して正確なボーレート設定が可能になります。
 
 ## なぜ FFI が必要なのか

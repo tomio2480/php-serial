@@ -1,7 +1,10 @@
 # PHP開発ガイドライン
 
-PHP開発における標準的なツール構成、ルール、プロセスをまとめたドキュメント。
-新規プロジェクト作成時やClaude Code起動時に参照することで、効率的な開発環境を構築できる。
+<!-- 句点は他の文書と同じく「。」で統一している． -->
+<!-- textlint-disable ja-technical-writing/ja-no-mixed-period -->
+
+PHP 開発における標準的なツール構成、ルール、プロセスをまとめたドキュメント。
+新規プロジェクト作成時や Claude Code 起動時に参照することで、効率的な開発環境を構築できる。
 
 ## 目次
 
@@ -18,7 +21,7 @@ PHP開発における標準的なツール構成、ルール、プロセスを�
 
 ### Composer
 
-PHPの依存関係管理ツール。すべてのプロジェクトで使用する。
+PHP の依存関係管理ツール。すべてのプロジェクトで使用する。
 
 ```bash
 # インストール確認
@@ -30,10 +33,10 @@ composer init
 
 ### PHP バージョン管理
 
-**最低要件**: PHP 8.1以上
-**推奨**: PHP 8.3以上（最新の安定版を使用）
+**最低要件**: PHP 8.1 以上
+**推奨**: PHP 8.3 以上（最新の安定版を使用）
 
-`composer.json`で明確に指定:
+`composer.json` で明確に指定:
 
 ```json
 {
@@ -52,11 +55,12 @@ composer init
 
 ### namespace構造
 
-```
+```text
 VendorName\PackageName\SubNamespace
 ```
 
 例:
+
 ```php
 namespace PhpSerial\Platform;
 ```
@@ -122,7 +126,7 @@ return (new PhpCsFixer\Config())
 
 #### 2. PHP_CodeSniffer
 
-PSR準拠チェックツール。
+PSR 準拠チェックツール。
 
 ```bash
 composer require --dev squizlabs/php_codesniffer
@@ -150,7 +154,7 @@ parameters:
 
 ### Composerスクリプト設定
 
-`composer.json`に以下を追加:
+`composer.json` に以下を追加:
 
 ```json
 {
@@ -271,7 +275,7 @@ jobs:
 1. コードスタイル（PSR-12）
 2. 静的解析（PHPStan level 8）
 3. ユニットテスト
-4. 複数PHP版対応（8.1〜8.5）
+4. 複数 PHP 版対応（8.1〜8.5）
 5. クロスプラットフォーム（Ubuntu, Windows, macOS）
 
 ## プロジェクト初期化手順
@@ -283,6 +287,7 @@ composer init
 ```
 
 対話形式で以下を設定:
+
 - Package name: `vendor-name/package-name`
 - Description: パッケージの説明
 - Author: `Your Name <email@example.com>`
@@ -326,6 +331,7 @@ composer.lock
 ### 6. README.md作成
 
 必須セクション:
+
 - 概要
 - 動作環境
 - インストール方法
@@ -336,6 +342,7 @@ composer.lock
 ### 7. CONTRIBUTING.md作成
 
 開発者向けガイドライン:
+
 - 環境構築手順
 - 品質確認コマンド
 - テスト実行方法
@@ -374,7 +381,7 @@ git add .
 git commit -m "Add new feature"
 ```
 
-### 4. プルリクエスト前
+### 4. Pull Request 作成前
 
 ```bash
 # 最新のmainブランチを取得
@@ -429,14 +436,14 @@ git push origin v1.0.0
 
 ### 3. Packagist登録
 
-1. [https://packagist.org](https://packagist.org) にGitHubアカウントでサインイン
+1. [https://packagist.org](https://packagist.org) に GitHub アカウントでサインイン
 2. 「Submit」をクリック
-3. リポジトリURL入力
+3. リポジトリ URL 入力
 4. 「Check」→「Submit」
 
 ### 4. 自動更新設定
 
-GitHubのWebhook設定を確認。自動で設定されるため、通常は手動設定不要。
+GitHub の Webhook 設定を確認。自動で設定されるため、通常は手動設定不要。
 
 ## PHP 8.x 新機能の活用
 
@@ -493,9 +500,9 @@ $result = $object?->method()?->property;
 ### セキュリティ
 
 - ユーザー入力は必ずバリデーション
-- SQLインジェクション対策（プリペアドステートメント使用）
-- XSS対策（出力時のエスケープ）
-- CSRF対策（トークン検証）
+- SQL インジェクション対策（プリペアドステートメント使用）
+- XSS 対策（出力時のエスケープ）
+- CSRF 対策（トークン検証）
 
 ### パフォーマンス
 
@@ -518,20 +525,20 @@ $result = $object?->method()?->property;
 - [ ] ディレクトリ構造作成（src, tests, examples, docs）
 - [ ] 品質保証ツールインストール（PHP-CS-Fixer, PHPStan, PHPUnit）
 - [ ] 設定ファイル作成（.php-cs-fixer.php, phpstan.neon, phpunit.xml）
-- [ ] .gitignore作成
-- [ ] README.md作成
-- [ ] CONTRIBUTING.md作成
-- [ ] GitHub Actions設定
+- [ ] .gitignore 作成
+- [ ] README.md 作成
+- [ ] CONTRIBUTING.md 作成
+- [ ] GitHub Actions 設定
 - [ ] `composer qa` で全チェック通過
 - [ ] 初回コミット
 
-Packagist公開時:
+Packagist 公開時:
 
-- [ ] composer.jsonメタデータ完備
-- [ ] README.md整備
+- [ ] composer.json メタデータ完備
+- [ ] README.md 整備
 - [ ] 全テスト通過
 - [ ] バージョンタグ作成
-- [ ] Packagist登録
+- [ ] Packagist 登録
 - [ ] インストール確認
 
 ## 参考資料

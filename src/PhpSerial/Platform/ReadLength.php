@@ -22,6 +22,9 @@ final class ReadLength
      */
     public const MAX = 65536;
 
+    /**
+     * @return int<1, max>
+     */
     public static function normalize(int $length): int
     {
         if ($length < 1) {

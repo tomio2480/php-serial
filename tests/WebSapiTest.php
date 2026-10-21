@@ -13,7 +13,8 @@ class WebSapiTest extends TestCase
 {
     private const FIXTURE_DIR = __DIR__ . '/fixtures/web-sapi';
     private const HOST = '127.0.0.1';
-    private const READY_TIMEOUT_SECONDS = 5.0;
+    // Windows・macOS ランナーの起動の遅さを見込む
+    private const READY_TIMEOUT_SECONDS = 15.0;
     private const POLL_INTERVAL_MICROSECONDS = 50000;
 
     public function testWindowsPlatformWarningsDoNotCauseFatalErrorOnWebSapi(): void
@@ -31,15 +32,14 @@ class WebSapiTest extends TestCase
         $this->assertIsResource($process);
 
         try {
-            $this->waitUntilListening($address);
+            $this->waitUntilListening($process, $address, $logFile);
             $body = $this->fetch("http://{$address}/windows-warnings.php");
         } finally {
             proc_terminate($process);
             proc_close($process);
+            $log = (string) file_get_contents($logFile);
+            unlink($logFile);
         }
-
-        $log = (string) file_get_contents($logFile);
-        unlink($logFile);
 
         $this->assertSame('ok', $body, "Server log:\n{$log}");
         $this->assertStringContainsString('PHP FFI extension is not enabled', $log);
@@ -56,11 +56,19 @@ class WebSapiTest extends TestCase
         return (int) substr($name, (int) strrpos($name, ':') + 1);
     }
 
-    private function waitUntilListening(string $address): void
+    /**
+     * @param resource $process
+     */
+    private function waitUntilListening($process, string $address, string $logFile): void
     {
         $deadline = microtime(true) + self::READY_TIMEOUT_SECONDS;
 
         while (microtime(true) < $deadline) {
+            // ポートの競合などで起動に失敗した場合は，待たずにログを添えて落とす
+            if (!proc_get_status($process)['running']) {
+                $this->fail("Built-in web server exited:\n" . file_get_contents($logFile));
+            }
+
             // 起動前の接続拒否は想定内のため，警告を抑止して再試行する
             $socket = @stream_socket_client("tcp://{$address}");
 

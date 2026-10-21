@@ -59,7 +59,7 @@ $port->close();
 ```
 
 `read(int $length = 1024)` は最大 `$length` バイトを返します。
-1回で確保するバッファの上限は64 KiB（`PhpSerial\Platform\ReadLength::MAX`）で、上限を超える指定は上限へ丸めます。
+1回で確保するバッファの上限は64 KiBで、上限を超える指定は上限へ丸めます。
 1未満を指定すると `RuntimeException` を送出します。
 
 ## 設定例

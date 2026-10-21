@@ -13,6 +13,8 @@ use RuntimeException;
  * 呼び出し側が外部入力をそのまま渡すと，巨大な確保で memory_limit を超え，
  * プロセスが fatal error で止まる．read() は「最大 n バイト」を返す API のため，
  * 上限へ丸めても呼び出し側の期待は崩れない．
+ *
+ * @internal Platform 実装の内部で使う．公開 API ではない．
  */
 final class ReadLength
 {

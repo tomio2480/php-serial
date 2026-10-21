@@ -45,8 +45,23 @@ For details, see: docs/WINDOWS_FFI_SETUP.md
 詳細は docs/WINDOWS_FFI_SETUP.md を参照してください
 
 EOT;
-        // stderr に出力（通常の出力と区別するため）
-        fwrite(STDERR, $message);
+        self::emitWarning($message);
+    }
+
+    /**
+     * 警告を通常の出力と区別して出す．
+     * STDERR は CLI でのみ定義され，Web 系 SAPI で参照すると fatal error になるため，
+     * その場合は SAPI のエラーログへ送る．
+     */
+    private static function emitWarning(string $message): void
+    {
+        if (defined('STDERR')) {
+            fwrite(STDERR, $message);
+
+            return;
+        }
+
+        error_log($message);
     }
 
     private function validateDevice(string $device): void
@@ -180,8 +195,7 @@ EOT;
 
         // FFI OFF 環境での受信不可の警告（初回のみ）
         if (!self::$readWarningShown) {
-            fwrite(
-                STDERR,
+            self::emitWarning(
                 'Warning: Data reception does not work in FFI OFF environment. ' .
                 "Enable FFI for bidirectional communication.\n"
             );

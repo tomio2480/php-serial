@@ -149,8 +149,9 @@ composer cs:fix
 ## ドキュメントの文体
 
 - Markdown の句読点は「、。」で統一する。
-- 利用者・開発者向けの手引き（`README.md`、`docs/`、`CONTRIBUTING.md`、`examples/**/README.md`）は「ですます調」で書く。
-- 規律やガイドライン（`CLAUDE.md`、`PHPDEV.md`）は「である調」で書く。
+- 利用者・開発者向けの手引きは「ですます調」で書く。
+  対象は `README.md`、`docs/`（`docs/notes/` を除く）、`CONTRIBUTING.md`、`examples/**/README.md` である。
+- 規律やガイドライン（`CLAUDE.md`、`PHPDEV.md`）と判断の記録（`docs/notes/`）は「である調」で書く。
 - 中央テンプレの textlint は「である調」と句点「．」を求める。上記と食い違うルールは、各ファイル先頭のコメントで無効化する。
 
 ## 開発の進め方

@@ -25,6 +25,8 @@ $WorkDir = (Resolve-Path $WorkDir).Path
 
 # 設定ファイルは作業ディレクトリからの相対名で渡し、パスの空白で引数が割れるのを避ける
 $env:PYTHONUNBUFFERED = '1'
+# 出力先がファイルだと既定の文字コードになり、serdevmock の日本語のメッセージで落ちる
+$env:PYTHONIOENCODING = 'utf-8'
 $proc = Start-Process -FilePath $exe -PassThru -NoNewWindow `
     -WorkingDirectory $fixtureDir `
     -ArgumentList '--protocol', 'uart', '--port', $MockPort, '--config', 'echo.json' `

@@ -52,6 +52,18 @@ jobs:
         ini-values: ffi.enable=true
         coverage: none
 
+    # FFI が無効だと SerialPort は fopen 版へ切り替わり、FFI 実装を試験しないまま通ってしまう
+    - name: Check FFI
+      run: |
+        $info = php --ri ffi
+        if ($LASTEXITCODE -ne 0) {
+          throw 'FFI 拡張が読み込まれていない'
+        }
+        $info
+        if (-not ($info -match '^ffi\.enable => (true|on|1)\b')) {
+          throw 'ffi.enable が有効になっていない'
+        }
+
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 

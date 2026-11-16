@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        php: ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6']
+        php: ['8.2', '8.3', '8.4', '8.5', '8.6']
         include:
           # setup-php は '8.6' に PHP-8.6 ブランチの nightly を入れる。
           # 8.6.0 の GA 後に stable へ切り替わったら、この指定を外して必須にする。

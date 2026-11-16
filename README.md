@@ -12,10 +12,14 @@ Windows、Mac、Linux で動作し、Pure PHP 実装。
 
 ## 動作環境
 
-- PHP 8.1 以上
+- PHP 8.2 以上
 - Windows、Linux、macOS
 
 PHP 本体のセキュリティ修正が提供されているバージョン（[サポート対象](https://www.php.net/supported-versions.php)）で、最新のパッチリリースを使うことを推奨します。
+
+対応する PHP のバージョンは、PHP 本体のサポート期間に合わせます。
+セキュリティ修正のみの期間を含め、本体のサポートが終わったバージョンは次のリリースで対応から外します。
+PHP 8.1 は 2025-12-31 にサポートが終わったため、v2.0.0 で外しました。
 
 ## インストール
 
@@ -60,6 +64,25 @@ echo "Received: {$response}\n";
 
 $port->close();
 ```
+
+`write(string $data)` は、データをすべて送り終えてから戻ります。
+戻り値は送ったバイト数で、常に `$data` の長さと同じです。
+期限は「1 文字の最大送信時間（12 ビット分）× バイト数 + 1 秒」で、どの OS でも同じです。
+相手が受け取らずに期限を過ぎると、`PhpSerial\TimeoutException` を送出します。
+送れたバイト数は `getBytesWritten()` で取り出せるため、残りを送り直せます。
+
+```php
+use PhpSerial\TimeoutException;
+
+try {
+    $port->write($data);
+} catch (TimeoutException $e) {
+    $rest = substr($data, $e->getBytesWritten());
+    // 相手の状態を確かめてから $rest を送り直す
+}
+```
+
+`TimeoutException` は `RuntimeException` を継承します。
 
 `read(int $length = 1024)` は最大 `$length` バイトを返します。
 1 回で確保するバッファの上限は 64 KiB で、上限を超える指定は上限へ丸めます。
@@ -157,6 +180,9 @@ $port = new SerialPort('/dev/ttyACM0');
 $port = new SerialPort('/dev/tty.usbserial');
 ```
 
+Linux と macOS では、`open()` が `stty` でポートを raw モードに設定します。
+改行の変換や制御文字の解釈をせず、受け取ったバイトをそのまま扱います。
+
 ## テスト
 
 環境変数でテスト用デバイスを指定:
@@ -171,6 +197,11 @@ cp .env.example .env
 # テスト実行
 composer test
 ```
+
+実機なしで送受信を確かめる結合テストもあります。
+serdevmock と仮想ポートの対を使います。
+CI では、Linux を push と PR のたびに、macOS と Windows を週 1 回と関係する PR で実行します。
+手順は [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) を参照してください。
 
 ## 使用例
 

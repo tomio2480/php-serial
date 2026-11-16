@@ -5,3 +5,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+  # 結合テストで使う serdevmock と pyserial（版とハッシュを固定している）
+  - package-ecosystem: "pip"
+    directory: "/tests/Integration"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

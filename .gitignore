@@ -15,3 +15,6 @@ examples/test_*.php
 examples/arduino/led_control_9600/
 .vscode/
 tools/
+
+# 結合テスト用の serdevmock を入れる venv（docs/INTEGRATION_TESTING.md）
+/.venv-serdevmock/

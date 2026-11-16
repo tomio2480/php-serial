@@ -1,0 +1,6 @@
+# serdevmock との結合テストで使う Python パッケージ。
+# 改ざん対策として、pip install --require-hashes で版とハッシュを固定して入れる。
+serdevmock==0.1.0 \
+    --hash=sha256:0515132c3e16eb9b5756984ee930f474ab09d3671cd8f7a9b30a34754b19fdb7
+pyserial==3.5 \
+    --hash=sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0

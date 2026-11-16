@@ -9,7 +9,10 @@ use RuntimeException;
 
 class Unix implements PlatformInterface
 {
-    private function validateDevice(string $device): void
+    // write() の期限の計算に使う。configure() の前に書いた場合は既定の設定の値を使う
+    private ?int $baudRate = null;
+
+    private static function validateDevice(string $device): void
     {
         // D 修飾子: $ を末尾の改行の手前で一致させない
         if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#D', $device)) {
@@ -24,7 +27,28 @@ class Unix implements PlatformInterface
 
     public function configure(string $device, Configuration $config): void
     {
-        $this->validateDevice($device);
+        exec(self::buildConfigureCommand($device, $config, PHP_OS_FAMILY), $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            throw new RuntimeException(
+                sprintf('Failed to configure serial port: %s', implode("\n", $output))
+            );
+        }
+
+        $this->baudRate = $config->getBaudRate();
+    }
+
+    /**
+     * ポートを設定する stty のコマンドを組み立てる。
+     *
+     * デバイスを渡すオプションは GNU（Linux）が -F、BSD 系（macOS）が -f である。
+     * macOS で -F を渡すと、stty はデバイスではなく標準入力を設定しようとして失敗する。
+     *
+     * @internal テストから OS ごとの組み立てを確かめるために公開している。
+     */
+    public static function buildConfigureCommand(string $device, Configuration $config, string $osFamily): string
+    {
+        self::validateDevice($device);
         $parityMap = [
             Configuration::PARITY_NONE => '-parenb',
             Configuration::PARITY_ODD => 'parenb parodd',
@@ -39,23 +63,22 @@ class Unix implements PlatformInterface
         $parity = $parityMap[$config->getParity()];
         $stopBits = $stopBitsMap[$config->getStopBits()];
 
+        $deviceOption = $osFamily === 'Darwin' ? '-f' : '-F';
+
+        // raw -echo -iexten: 行編集・改行の変換・特殊文字（0x0F・0x16 など）の処理を止め、
+        // 受け取ったバイトをそのまま扱う。既定の端末設定ではバイナリが欠ける。
+        // macOS の raw はデータビットとパリティも上書きするため、回線の設定より前に置く。
         // セキュリティ: 数値パラメータも明示的にエスケープ
-        $command = sprintf(
-            'stty -F %s %s cs%s %s %s',
+        // 失敗の理由を例外メッセージへ残すため、標準エラー出力も受け取る
+        return sprintf(
+            'stty %s %s raw -echo -iexten %s cs%s %s %s 2>&1',
+            $deviceOption,
             escapeshellarg($device),
             escapeshellarg((string) $config->getBaudRate()),
             escapeshellarg((string) $config->getDataBits()),
             $parity,
             $stopBits
         );
-
-        exec($command, $output, $returnCode);
-
-        if ($returnCode !== 0) {
-            throw new RuntimeException(
-                sprintf('Failed to configure serial port: %s', implode("\n", $output))
-            );
-        }
     }
 
     public function open(string $device): mixed
@@ -86,13 +109,26 @@ class Unix implements PlatformInterface
             throw new RuntimeException('Invalid handle');
         }
 
-        $written = fwrite($handle, $data);
+        // ポートは非ブロッキングで開いているため、送信バッファの空きの分しか書けない。
+        // 残りは書き込めるようになるのを待って書き足し、期限を過ぎたら TimeoutException を投げる
+        return WriteLoop::run(
+            $data,
+            WriteDeadline::budgetMs(strlen($data), $this->baudRate ?? (new Configuration())->getBaudRate()),
+            static fn (string $chunk): int|false => fwrite($handle, $chunk),
+            static function (float $seconds) use ($handle): void {
+                $read = null;
+                $write = [$handle];
+                $except = null;
+                $wholeSeconds = (int) $seconds;
+                $microseconds = (int) (($seconds - $wholeSeconds) * 1_000_000);
 
-        if ($written === false) {
-            throw new RuntimeException('Failed to write to serial port');
-        }
-
-        return $written;
+                // シグナルで中断（EINTR）されると、stream_select は警告を出して false を返す。
+                // 警告を例外へ変える環境で write() が抜けないよう抑止する。
+                // 待機の失敗は無視してよい。呼び出し元が期限を確かめて書き直す
+                @stream_select($read, $write, $except, $wholeSeconds, $microseconds);
+            },
+            static fn (): float => microtime(true)
+        );
     }
 
     public function read(mixed $handle, int $length): string|false

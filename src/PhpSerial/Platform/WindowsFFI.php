@@ -6,7 +6,9 @@ namespace PhpSerial\Platform;
 
 use FFI;
 use PhpSerial\Configuration;
+use PhpSerial\TimeoutException;
 use RuntimeException;
+use Throwable;
 
 /**
  * Windows implementation using FFI to call Windows API directly
@@ -16,6 +18,20 @@ class WindowsFFI implements PlatformInterface
 {
     // CreateFileA が失敗時に返す値（(HANDLE)-1）
     private const INVALID_HANDLE_VALUE = -1;
+
+    // DCB.StopBits の値（winbase.h の ONESTOPBIT と TWOSTOPBITS）
+    private const DCB_ONESTOPBIT = 0;
+    private const DCB_TWOSTOPBITS = 2;
+
+    /**
+     * プロセス内で共有する FFI インスタンス。
+     *
+     * インスタンスごとに FFI::cdef() していた頃、PHPUnit で同じプロセスの 2 件目のテストが
+     * ポートを開くと、DCB のフィールドへの代入で FFI\Exception が出た。
+     * 原因は特定できていない（PHPUnit の外では再現しなかった）。
+     * 回避策として一度だけ作って保持し続け、破棄させない。
+     */
+    private static ?FFI $sharedFfi = null;
 
     private ?FFI $ffi = null;
     private mixed $handle = null;
@@ -34,6 +50,12 @@ class WindowsFFI implements PlatformInterface
     private function initFFI(): void
     {
         if ($this->ffi !== null) {
+            return;
+        }
+
+        if (self::$sharedFfi !== null) {
+            $this->ffi = self::$sharedFfi;
+
             return;
         }
 
@@ -111,7 +133,8 @@ class WindowsFFI implements PlatformInterface
                      DWORD* lpNumberOfBytesWritten, void* lpOverlapped);
         CDEF;
 
-        $this->ffi = FFI::cdef($code, 'kernel32.dll');
+        self::$sharedFfi = FFI::cdef($code, 'kernel32.dll');
+        $this->ffi = self::$sharedFfi;
     }
 
     public function configure(string $device, Configuration $config): void
@@ -154,7 +177,15 @@ class WindowsFFI implements PlatformInterface
 
         // Apply configuration immediately after opening
         if ($this->config !== null) {
-            $this->applyConfiguration($this->config);
+            try {
+                $this->applyConfiguration($this->config);
+            } catch (Throwable $e) {
+                // 排他で開いたハンドルを残すと、同じポートを二度と開けなくなる
+                $this->ffi->CloseHandle($handle);
+                $this->handle = null;
+
+                throw $e;
+            }
         }
 
         return $handle;
@@ -190,23 +221,44 @@ class WindowsFFI implements PlatformInterface
         ];
         $dcb->Parity = $parityMap[$config->getParity()] ?? 0;
 
-        // Stop bits (0 = 1 bit, 2 = 2 bits)
-        $dcb->StopBits = $config->getStopBits() - 1;
+        $dcb->StopBits = self::toDcbStopBits($config->getStopBits());
 
         // Apply settings
         if (!$this->ffi->SetCommState($this->handle, FFI::addr($dcb))) {
             throw new RuntimeException('Failed to set COM state');
         }
 
-        // Set timeouts for non-blocking reads
+        // 読み込みはすぐ戻す。書き込みは送信にかかる時間に余裕を足した上限を設ける
+        // （0 にすると上限が無くなり、相手が読まないと WriteFile が戻らない）
         $timeouts = $this->ffi->new('COMMTIMEOUTS');
         $timeouts->ReadIntervalTimeout = 1;
         $timeouts->ReadTotalTimeoutMultiplier = 0;
         $timeouts->ReadTotalTimeoutConstant = 1;
-        $timeouts->WriteTotalTimeoutMultiplier = 0;
-        $timeouts->WriteTotalTimeoutConstant = 0;
+        // 上限は WriteDeadline::budgetMs() と同じ「1 文字の最大送信時間 × バイト数 + 余裕」になる
+        $timeouts->WriteTotalTimeoutMultiplier = WriteDeadline::perCharacterMs($config->getBaudRate());
+        $timeouts->WriteTotalTimeoutConstant = WriteDeadline::MARGIN_MS;
 
-        $this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts));
+        // 失敗を見逃すと書き込みの上限が無いままになるため、例外にする
+        if (!$this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts))) {
+            throw new RuntimeException('Failed to set COM timeouts');
+        }
+    }
+
+    /**
+     * ストップビット数を DCB.StopBits の値へ変換する。
+     *
+     * DCB は 0 = 1 ビット、1 = 1.5 ビット、2 = 2 ビットで表す（winbase.h）。
+     * ビット数から 1 を引くと、2 ビットが 1.5 ビットになってしまう。
+     *
+     * @internal テストから変換規則を確かめるために公開している。
+     */
+    public static function toDcbStopBits(int $stopBits): int
+    {
+        return match ($stopBits) {
+            Configuration::STOP_BITS_1 => self::DCB_ONESTOPBIT,
+            Configuration::STOP_BITS_2 => self::DCB_TWOSTOPBITS,
+            default => throw new RuntimeException(sprintf('Unsupported stop bits: %d', $stopBits)),
+        };
     }
 
     public function close(mixed $handle): void
@@ -227,17 +279,52 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('FFI is not initialized');
         }
 
+        $length = strlen($data);
+
+        // char[0] は確保できないため、空のデータは書かずに返す
+        if ($length === 0) {
+            return 0;
+        }
+
         // 所有権付きで確保し，$buffer の破棄と同時に解放させる（WriteFile は同期呼び出し）
-        $buffer = $this->ffi->new('char[' . strlen($data) . ']');
-        FFI::memcpy($buffer, $data, strlen($data));
+        $buffer = $this->ffi->new('char[' . $length . ']');
+        FFI::memcpy($buffer, $data, $length);
 
         $bytesWritten = $this->ffi->new('DWORD');
 
-        if (!$this->ffi->WriteFile($handle, $buffer, strlen($data), FFI::addr($bytesWritten), null)) {
+        if (!$this->ffi->WriteFile($handle, $buffer, $length, FFI::addr($bytesWritten), null)) {
             throw new RuntimeException('Failed to write to serial port');
         }
 
-        return $bytesWritten->cdata;
+        return self::ensureFullyWritten(
+            (int) $bytesWritten->cdata,
+            $length,
+            ($this->config ?? new Configuration())->getBaudRate()
+        );
+    }
+
+    /**
+     * WriteFile が全量を書けたかを確かめ、書けていなければ TimeoutException を投げる。
+     *
+     * COMMTIMEOUTS の上限に達すると、WriteFile は成功を返しつつ一部だけ書いて戻る。
+     *
+     * @internal テストから判定を確かめるために公開している。
+     */
+    public static function ensureFullyWritten(int $written, int $length, int $baudRate): int
+    {
+        if ($written < $length) {
+            throw new TimeoutException(
+                sprintf(
+                    'Write timed out after %d ms: wrote %d of %d bytes',
+                    WriteDeadline::budgetMs($length, $baudRate),
+                    $written,
+                    $length
+                ),
+                $written
+            );
+        }
+
+        return $written;
     }
 
     public function read(mixed $handle, int $length): string|false

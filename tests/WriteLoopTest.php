@@ -83,7 +83,8 @@ class WriteLoopTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Failed to write to serial port');
 
-        $failingWriter = fn (string $chunk): false => false;
+        // 単独の false 型は PHP 8.2 から。8.1 でも読めるよう戻り値の型は書かない
+        $failingWriter = fn (string $chunk) => false;
 
         try {
             WriteLoop::run('hello', self::BUDGET_MS, $failingWriter, $this->waiter(0.1), $this->now(...));

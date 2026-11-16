@@ -17,7 +17,7 @@
 
 ### 必要な環境
 
-- PHP 8.1 以上
+- PHP 8.2 以上
 - Composer
 - Git
 
@@ -126,7 +126,7 @@ composer qa
 
 Pull Request の作成時と push 時に、以下が自動で実行されます。
 
-- PHP 8.1〜8.5 での動作確認
+- PHP 8.2〜8.5 での動作確認
 - Windows, Linux, macOS での動作確認
 - コード品質チェック (PSR-12, PHPStan)
 - テスト実行

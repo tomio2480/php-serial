@@ -12,6 +12,12 @@ class Windows implements PlatformInterface
     private static bool $warningShown = false;
     private static bool $readWarningShown = false;
 
+    // 書き込めなかったときに、次に試すまでの間隔
+    private const WRITE_RETRY_INTERVAL_SECONDS = 0.01;
+
+    // write() の期限の計算に使う。configure() の前に書いた場合は既定の設定の値を使う
+    private ?int $baudRate = null;
+
     public function __construct()
     {
         // FFI が無効な場合は警告を表示（初回のみ）
@@ -134,6 +140,8 @@ EOT;
             );
         }
 
+        $this->baudRate = $baudRate;
+
         // 設定が反映されるまで少し待機
         usleep(100000); // 100ms
     }
@@ -175,13 +183,16 @@ EOT;
             throw new RuntimeException('Invalid handle');
         }
 
-        $written = fwrite($handle, $data);
-
-        if ($written === false) {
-            throw new RuntimeException('Failed to write to serial port');
-        }
-
-        return $written;
+        // Windows の COM ポートのストリームは stream_select() で待てないため、短い間隔で書き直す
+        return WriteLoop::run(
+            $data,
+            WriteDeadline::budgetMs(strlen($data), $this->baudRate ?? (new Configuration())->getBaudRate()),
+            static fn (string $chunk): int|false => fwrite($handle, $chunk),
+            static function (float $seconds): void {
+                usleep((int) (min($seconds, self::WRITE_RETRY_INTERVAL_SECONDS) * 1_000_000));
+            },
+            static fn (): float => microtime(true)
+        );
     }
 
     public function read(mixed $handle, int $length): string|false

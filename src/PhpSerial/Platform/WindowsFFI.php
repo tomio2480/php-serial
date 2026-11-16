@@ -6,6 +6,7 @@ namespace PhpSerial\Platform;
 
 use FFI;
 use PhpSerial\Configuration;
+use PhpSerial\TimeoutException;
 use RuntimeException;
 use Throwable;
 
@@ -21,12 +22,6 @@ class WindowsFFI implements PlatformInterface
     // DCB.StopBits の値（winbase.h の ONESTOPBIT と TWOSTOPBITS）
     private const DCB_ONESTOPBIT = 0;
     private const DCB_TWOSTOPBITS = 2;
-
-    // 1 文字の最大ビット数（スタート 1・データ 8・パリティ 1・ストップ 2）
-    private const MAX_BITS_PER_CHARACTER = 12;
-
-    // 書き込みの上限に足す固定の余裕。相手が読まないときは、この程度で諦める
-    private const WRITE_TIMEOUT_MARGIN_MS = 1000;
 
     /**
      * プロセス内で共有する FFI インスタンス。
@@ -239,8 +234,9 @@ class WindowsFFI implements PlatformInterface
         $timeouts->ReadIntervalTimeout = 1;
         $timeouts->ReadTotalTimeoutMultiplier = 0;
         $timeouts->ReadTotalTimeoutConstant = 1;
-        $timeouts->WriteTotalTimeoutMultiplier = self::writeTimeoutMultiplierMs($config->getBaudRate());
-        $timeouts->WriteTotalTimeoutConstant = self::WRITE_TIMEOUT_MARGIN_MS;
+        // 上限は WriteDeadline::budgetMs() と同じ「1 文字の最大送信時間 × バイト数 + 余裕」になる
+        $timeouts->WriteTotalTimeoutMultiplier = WriteDeadline::perCharacterMs($config->getBaudRate());
+        $timeouts->WriteTotalTimeoutConstant = WriteDeadline::MARGIN_MS;
 
         // 失敗を見逃すと書き込みの上限が無いままになるため、例外にする
         if (!$this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts))) {
@@ -265,22 +261,6 @@ class WindowsFFI implements PlatformInterface
         };
     }
 
-    /**
-     * 1 文字の送信にかかる最大時間（ミリ秒、切り上げ）を返す。
-     *
-     * COMMTIMEOUTS.WriteTotalTimeoutMultiplier に使う。
-     *
-     * @internal テストから計算規則を確かめるために公開している。
-     */
-    public static function writeTimeoutMultiplierMs(int $baudRate): int
-    {
-        if ($baudRate < 1) {
-            throw new RuntimeException(sprintf('Baud rate must be positive: %d', $baudRate));
-        }
-
-        return max(1, intdiv(self::MAX_BITS_PER_CHARACTER * 1000 + $baudRate - 1, $baudRate));
-    }
-
     public function close(mixed $handle): void
     {
         if ($handle !== null && $this->ffi !== null) {
@@ -299,17 +279,52 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('FFI is not initialized');
         }
 
+        $length = strlen($data);
+
+        // char[0] は確保できないため、空のデータは書かずに返す
+        if ($length === 0) {
+            return 0;
+        }
+
         // 所有権付きで確保し，$buffer の破棄と同時に解放させる（WriteFile は同期呼び出し）
-        $buffer = $this->ffi->new('char[' . strlen($data) . ']');
-        FFI::memcpy($buffer, $data, strlen($data));
+        $buffer = $this->ffi->new('char[' . $length . ']');
+        FFI::memcpy($buffer, $data, $length);
 
         $bytesWritten = $this->ffi->new('DWORD');
 
-        if (!$this->ffi->WriteFile($handle, $buffer, strlen($data), FFI::addr($bytesWritten), null)) {
+        if (!$this->ffi->WriteFile($handle, $buffer, $length, FFI::addr($bytesWritten), null)) {
             throw new RuntimeException('Failed to write to serial port');
         }
 
-        return $bytesWritten->cdata;
+        return self::ensureFullyWritten(
+            (int) $bytesWritten->cdata,
+            $length,
+            ($this->config ?? new Configuration())->getBaudRate()
+        );
+    }
+
+    /**
+     * WriteFile が全量を書けたかを確かめ、書けていなければ TimeoutException を投げる。
+     *
+     * COMMTIMEOUTS の上限に達すると、WriteFile は成功を返しつつ一部だけ書いて戻る。
+     *
+     * @internal テストから判定を確かめるために公開している。
+     */
+    public static function ensureFullyWritten(int $written, int $length, int $baudRate): int
+    {
+        if ($written < $length) {
+            throw new TimeoutException(
+                sprintf(
+                    'Write timed out after %d ms: wrote %d of %d bytes',
+                    WriteDeadline::budgetMs($length, $baudRate),
+                    $written,
+                    $length
+                ),
+                $written
+            );
+        }
+
+        return $written;
     }
 
     public function read(mixed $handle, int $length): string|false

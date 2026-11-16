@@ -69,6 +69,17 @@ class SerialPort
         $this->isOpen = false;
     }
 
+    /**
+     * データをすべて送る。
+     *
+     * 期限は「1 文字の最大送信時間 × バイト数 + 1 秒」で、どの OS でも同じである。
+     *
+     * @return int 送ったバイト数（常に $data の長さ）
+     *
+     * @throws TimeoutException 相手が受け取らず、期限までに送り終えられなかった。
+     *                          送れたバイト数は getBytesWritten() で取り出せる
+     * @throws RuntimeException ポートが開いていない、または書き込みに失敗した
+     */
     public function write(string $data): int
     {
         $this->ensureOpen();

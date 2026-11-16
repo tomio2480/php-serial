@@ -9,6 +9,9 @@ use RuntimeException;
 
 class Unix implements PlatformInterface
 {
+    // write() の期限の計算に使う。configure() の前に書いた場合は既定の設定の値を使う
+    private ?int $baudRate = null;
+
     private static function validateDevice(string $device): void
     {
         // D 修飾子: $ を末尾の改行の手前で一致させない
@@ -31,6 +34,8 @@ class Unix implements PlatformInterface
                 sprintf('Failed to configure serial port: %s', implode("\n", $output))
             );
         }
+
+        $this->baudRate = $config->getBaudRate();
     }
 
     /**
@@ -104,13 +109,26 @@ class Unix implements PlatformInterface
             throw new RuntimeException('Invalid handle');
         }
 
-        $written = fwrite($handle, $data);
+        // ポートは非ブロッキングで開いているため、送信バッファの空きの分しか書けない。
+        // 残りは書き込めるようになるのを待って書き足し、期限を過ぎたら TimeoutException を投げる
+        return WriteLoop::run(
+            $data,
+            WriteDeadline::budgetMs(strlen($data), $this->baudRate ?? (new Configuration())->getBaudRate()),
+            static fn (string $chunk): int|false => fwrite($handle, $chunk),
+            static function (float $seconds) use ($handle): void {
+                $read = null;
+                $write = [$handle];
+                $except = null;
+                $wholeSeconds = (int) $seconds;
+                $microseconds = (int) (($seconds - $wholeSeconds) * 1_000_000);
 
-        if ($written === false) {
-            throw new RuntimeException('Failed to write to serial port');
-        }
-
-        return $written;
+                // シグナルで中断（EINTR）されると、stream_select は警告を出して false を返す。
+                // 警告を例外へ変える環境で write() が抜けないよう抑止する。
+                // 待機の失敗は無視してよい。呼び出し元が期限を確かめて書き直す
+                @stream_select($read, $write, $except, $wholeSeconds, $microseconds);
+            },
+            static fn (): float => microtime(true)
+        );
     }
 
     public function read(mixed $handle, int $length): string|false

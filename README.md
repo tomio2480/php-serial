@@ -65,11 +65,24 @@ echo "Received: {$response}\n";
 $port->close();
 ```
 
-`write(string $data)` は実際に書き込めたバイト数を返します。
-相手が受け取れないと、渡した長さより少ない値（0 を含む）が返ります。
-Linux と macOS はポートを非ブロッキングで開くため、送信バッファの空きの分だけ書きます。
-Windows では、書き込みの上限を「送信時間 + 1 秒」とし、超えたら打ち切ります。
-戻り値を確かめ、書き残した分は送り直してください。
+`write(string $data)` は、データをすべて送り終えてから戻ります。
+戻り値は送ったバイト数で、常に `$data` の長さと同じです。
+期限は「1 文字の最大送信時間（12 ビット分）× バイト数 + 1 秒」で、どの OS でも同じです。
+相手が受け取らずに期限を過ぎると、`PhpSerial\TimeoutException` を送出します。
+送れたバイト数は `getBytesWritten()` で取り出せるため、残りを送り直せます。
+
+```php
+use PhpSerial\TimeoutException;
+
+try {
+    $port->write($data);
+} catch (TimeoutException $e) {
+    $rest = substr($data, $e->getBytesWritten());
+    // 相手の状態を確かめてから $rest を送り直す
+}
+```
+
+`TimeoutException` は `RuntimeException` を継承します。
 
 `read(int $length = 1024)` は最大 `$length` バイトを返します。
 1 回で確保するバッファの上限は 64 KiB で、上限を超える指定は上限へ丸めます。

@@ -200,6 +200,7 @@ composer test
 
 実機なしで送受信を確かめる結合テストもあります。
 serdevmock と仮想ポートの対を使います。
+CI では、Linux を push と PR のたびに、macOS と Windows を週 1 回と関係する PR で実行します。
 手順は [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) を参照してください。
 
 ## 使用例

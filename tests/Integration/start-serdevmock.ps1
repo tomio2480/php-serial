@@ -26,9 +26,7 @@ $WorkDir = (Resolve-Path $WorkDir).Path
 $env:PYTHONUNBUFFERED = '1'
 # 出力先がファイルだと既定の文字コードになり、serdevmock の日本語のメッセージで落ちる
 $env:PYTHONIOENCODING = 'utf-8'
-# 設定ファイルは作業ディレクトリからの相対名で渡し、パスの空白で引数が割れるのを避ける。
-# -NoNewWindow で呼び出し元のコンソールを共有すると、そのコンソールが閉じたとき
-# （CI ではステップの終わり）に serdevmock も終了するため、別の非表示コンソールで動かす
+# 設定ファイルは作業ディレクトリからの相対名で渡し、パスの空白で引数が割れるのを避ける
 $proc = Start-Process -FilePath $exe -PassThru -WindowStyle Hidden `
     -WorkingDirectory $fixtureDir `
     -ArgumentList '--protocol', 'uart', '--port', $MockPort, '--config', 'echo.json' `
@@ -86,9 +84,9 @@ try {
 }
 
 if (-not $ready) {
-    Write-Error 'serdevmock からエコーが返らなかった' -ErrorAction Continue
     Write-SerdevmockLog
-    exit 1
+    # 呼び出し元が後続の試験へ進まないよう、終了コードでなく例外で知らせる
+    throw 'serdevmock からエコーが返らなかった'
 }
 
 Write-Host "php-serial 側: $AppPort / serdevmock 側: $MockPort"

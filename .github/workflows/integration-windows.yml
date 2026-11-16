@@ -128,24 +128,23 @@ jobs:
           }
         }
 
-    - name: Start serdevmock
-      run: >-
-        ./tests/Integration/start-serdevmock.ps1
-        -AppPort $env:APP_PORT -MockPort $env:MOCK_PORT
-        -WorkDir (Join-Path $env:RUNNER_TEMP 'serdevmock')
-
+    # Windows のランナーは、ステップ内で起動したプロセスをステップの終わりに止める。
+    # このため serdevmock の起動・試験・停止を 1 つのステップで行う。
     # 環境変数が欠けて全件が飛ばされたまま緑になるのを防ぐため、skip と空を失敗として扱う
-    - name: Run integration tests
+    - name: Run integration tests with serdevmock
       timeout-minutes: 3
       env:
         SERDEVMOCK_PORT: ${{ env.APP_PORT }}
-      run: >-
-        php vendor/bin/phpunit --group integration --testdox
-        --fail-on-skipped --fail-on-empty-test-suite
-
-    - name: Stop serdevmock
-      if: ${{ !cancelled() }}
-      run: ./tests/Integration/stop-serdevmock.ps1 -WorkDir (Join-Path $env:RUNNER_TEMP 'serdevmock')
+      run: |
+        $work = Join-Path $env:RUNNER_TEMP 'serdevmock'
+        try {
+          ./tests/Integration/start-serdevmock.ps1 -AppPort $env:APP_PORT -MockPort $env:MOCK_PORT -WorkDir $work
+          php vendor/bin/phpunit --group integration --testdox --fail-on-skipped --fail-on-empty-test-suite
+          $code = $LASTEXITCODE
+        } finally {
+          ./tests/Integration/stop-serdevmock.ps1 -WorkDir $work
+        }
+        exit $code
 
     # serdevmock を止めた後の COM10 は、相手が読まないポートになる
     - name: Run idle port tests

@@ -1,0 +1,70 @@
+name: Integration (macOS)
+
+# macOS ランナーは空き待ちが 10 分前後になることがあるため、push ごとには走らせない。
+# 手動・週 1 回・結合テストの仕組みを変えた PR に限って実行する。
+on:
+  workflow_dispatch:
+  schedule:
+    # 毎週月曜 03:00（日本時間）
+    - cron: '0 18 * * 0'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/integration-macos.yml'
+      - 'tests/Integration/**'
+      - 'tests/fixtures/serdevmock/**'
+      - 'src/PhpSerial/Platform/Unix.php'
+
+permissions:
+  contents: read
+
+jobs:
+  serdevmock:
+    name: serdevmock - macos-latest
+    runs-on: macos-latest
+    # 相手が読まないと write() が戻らない経路があるため、上限を設けて CI を止めない
+    timeout-minutes: 15
+    env:
+      SERDEVMOCK_PORT: /dev/tty.serdevmock
+      SERDEVMOCK_WORKDIR: ${{ runner.temp }}/serdevmock
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+      with:
+        php-version: '8.5'
+        coverage: none
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Setup Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - name: Install socat
+      run: brew install socat
+
+    - name: Install serdevmock
+      run: python -m pip install --require-hashes -r tests/Integration/requirements.txt
+
+    - name: Start serdevmock
+      run: bash tests/Integration/start-serdevmock.sh "$SERDEVMOCK_PORT" "$SERDEVMOCK_WORKDIR"
+
+    # 環境変数が欠けて全件が飛ばされたまま緑になるのを防ぐため、skip と空を失敗として扱う
+    - name: Run integration tests
+      timeout-minutes: 3
+      run: >-
+        vendor/bin/phpunit --group integration --testdox
+        --fail-on-skipped --fail-on-empty-test-suite
+
+    - name: Stop serdevmock
+      if: always()
+      run: bash tests/Integration/stop-serdevmock.sh "$SERDEVMOCK_PORT" "$SERDEVMOCK_WORKDIR"

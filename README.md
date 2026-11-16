@@ -172,6 +172,10 @@ cp .env.example .env
 composer test
 ```
 
+実機なしで送受信を確かめる結合テストもあります。
+serdevmock と仮想ポートの対を使います。
+手順は [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) を参照してください。
+
 ## 使用例
 
 基本的な使用例は [examples/basic.php](examples/basic.php) を参照。

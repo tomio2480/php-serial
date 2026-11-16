@@ -60,10 +60,13 @@ class Unix implements PlatformInterface
 
         $deviceOption = $osFamily === 'Darwin' ? '-f' : '-F';
 
+        // raw -echo -iexten: 行編集・改行の変換・特殊文字（0x0F・0x16 など）の処理を止め、
+        // 受け取ったバイトをそのまま扱う。既定の端末設定ではバイナリが欠ける。
+        // macOS の raw はデータビットとパリティも上書きするため、回線の設定より前に置く。
         // セキュリティ: 数値パラメータも明示的にエスケープ
         // 失敗の理由を例外メッセージへ残すため、標準エラー出力も受け取る
         return sprintf(
-            'stty %s %s %s cs%s %s %s 2>&1',
+            'stty %s %s raw -echo -iexten %s cs%s %s %s 2>&1',
             $deviceOption,
             escapeshellarg($device),
             escapeshellarg((string) $config->getBaudRate()),

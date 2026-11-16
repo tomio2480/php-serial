@@ -157,6 +157,9 @@ $port = new SerialPort('/dev/ttyACM0');
 $port = new SerialPort('/dev/tty.usbserial');
 ```
 
+Linux と macOS では、`open()` が `stty` でポートを raw モードに設定します。
+改行の変換や制御文字の解釈をせず、受け取ったバイトをそのまま扱います。
+
 ## テスト
 
 環境変数でテスト用デバイスを指定:

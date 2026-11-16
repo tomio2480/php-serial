@@ -1,12 +1,9 @@
 name: Integration (Windows)
 
 # com0com の仮想 COM ポート対と serdevmock を使い、FFI 実装の送受信を実機なしで確かめる。
-# ドライバーの導入に時間がかかるため、macOS 版と同じく実行の機会を絞る。
+# FFI 実装に関係しない変更まで走らせないよう、macOS 版と同じく実行の機会を絞る。
 on:
   workflow_dispatch:
-  # TEMP: PR 作成前に削除する
-  push:
-    branches: [ 'claude/ci-windows-integration-*' ]
   schedule:
     # 毎週月曜 03:00（日本時間）
     - cron: '0 18 * * 0'

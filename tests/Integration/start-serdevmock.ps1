@@ -49,6 +49,8 @@ function Write-SerdevmockLog {
 $port = [System.IO.Ports.SerialPort]::new($AppPort, 9600)
 $port.NewLine = "`n"
 $port.ReadTimeout = 1000
+# 相手が読まないと書き込みが戻らないため、上限を設ける
+$port.WriteTimeout = 1000
 $ready = $false
 
 $port.Open()
@@ -60,7 +62,11 @@ try {
         }
 
         $probe = "probe-$i"
-        $port.WriteLine($probe)
+        try {
+            $port.WriteLine($probe)
+        } catch [System.TimeoutException] {
+            continue
+        }
         $deadline = [DateTime]::UtcNow.AddSeconds(1)
 
         while (-not $ready -and [DateTime]::UtcNow -lt $deadline) {

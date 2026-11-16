@@ -10,6 +10,7 @@ require __DIR__ . '/../../../vendor/autoload.php';
 
 use PhpSerial\Configuration;
 use PhpSerial\SerialPort;
+use PhpSerial\TimeoutException;
 
 $args = $_SERVER['argv'] ?? [];
 $device = $args[1] ?? null;
@@ -26,6 +27,8 @@ $port->open();
 try {
     $written = $port->write(str_repeat('x', $length));
     echo "written:{$written}";
+} catch (TimeoutException $e) {
+    echo "timeout:{$e->getBytesWritten()}";
 } catch (RuntimeException $e) {
     echo "exception:{$e->getMessage()}";
 } finally {

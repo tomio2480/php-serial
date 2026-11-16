@@ -52,7 +52,7 @@ final class WindowsIdlePortTest extends TestCase
         $this->device = $device;
     }
 
-    public function testWriteReturnsWithinDeadlineWhenPeerIsNotReading(): void
+    public function testWriteThrowsTimeoutWithinDeadlineWhenPeerIsNotReading(): void
     {
         $process = proc_open(
             [PHP_BINARY, self::FIXTURE, $this->device, (string) self::WRITE_LENGTH],
@@ -80,8 +80,9 @@ final class WindowsIdlePortTest extends TestCase
         proc_close($process);
 
         $this->assertTrue($returned, 'write() did not return within ' . self::WRITE_DEADLINE_SECONDS . ' seconds');
-        $this->assertMatchesRegularExpression('/^(written:\d+|exception:.+)$/', $output, $errors);
-        $this->assertNotSame('written:' . self::WRITE_LENGTH, $output, '相手が読まないのに全量を書けたと報告した');
+        // 期限を過ぎたら TimeoutException で知らせ、書けたバイト数は渡した長さより少ない
+        $this->assertMatchesRegularExpression('/^timeout:(\d+)$/', $output, $output . $errors);
+        $this->assertLessThan(self::WRITE_LENGTH, (int) substr($output, strlen('timeout:')));
     }
 
     public function testPortCanBeReopenedAfterConfigurationFails(): void

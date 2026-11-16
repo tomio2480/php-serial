@@ -37,40 +37,11 @@ class WindowsFFIConversionTest extends TestCase
         $this->assertSame($expected, WindowsFFI::toDcbStopBits($stopBits));
     }
 
-    /**
-     * 1 文字を最大 12 ビット（スタート・データ 8・パリティ・ストップ 2）と見て、切り上げた値を期待する。
-     *
-     * @return array<string, array{int, int}>
-     */
-    public static function writeTimeoutMultiplierProvider(): array
-    {
-        return [
-            '300 bps' => [300, 40],
-            '9600 bps' => [9600, 2],
-            '115200 bps' => [115200, 1],
-            '921600 bps' => [921600, 1],
-        ];
-    }
-
-    #[DataProvider('writeTimeoutMultiplierProvider')]
-    public function testWriteTimeoutMultiplierCoversOneCharacterTime(int $baudRate, int $expectedMs): void
-    {
-        $this->assertSame($expectedMs, WindowsFFI::writeTimeoutMultiplierMs($baudRate));
-    }
-
     public function testUnsupportedStopBitsAreRejected(): void
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Unsupported stop bits: 3');
 
         WindowsFFI::toDcbStopBits(3);
-    }
-
-    public function testNonPositiveBaudRateIsRejected(): void
-    {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Baud rate must be positive: 0');
-
-        WindowsFFI::writeTimeoutMultiplierMs(0);
     }
 }

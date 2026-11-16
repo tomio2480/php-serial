@@ -136,7 +136,7 @@ Windows の FFI 実装で、次の問題を見つけて直しました。
 
 | 問題 | 確かめるテスト |
 |---|---|
-| 相手が読まないと `write()` が戻らない | `WindowsIdlePortTest` |
+| 相手が読まないと `write()` が戻らない（現在は期限を過ぎると `TimeoutException`） | `WindowsIdlePortTest` |
 | 同じプロセスで 2 回目に開くと `FFI\Exception` が出る | `SerdevmockEchoTest`（3 件をまとめて流す） |
 | 設定に失敗すると COM ポートのハンドルが残る | `WindowsIdlePortTest` |
 | ストップビット 2 が 1.5 として設定される | `WindowsFFIConversionTest` |

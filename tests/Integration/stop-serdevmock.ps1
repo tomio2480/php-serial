@@ -14,7 +14,10 @@ if (Test-Path $pidFile) {
     $id = [int](Get-Content $pidFile -TotalCount 1)
     $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
 
-    if ($null -ne $proc) {
+    if ($null -eq $proc) {
+        # 試験の途中で落ちていた場合は、失敗の原因として目に付くように残す
+        Write-Warning 'serdevmock は停止の前に終了していた'
+    } else {
         # serdevmock.exe は python.exe を子として起動するため、子まで含めて止める
         & taskkill.exe /PID $id /T /F | Out-Null
         # ポートが閉じ切る前に次の試験が開くと、使用中で失敗するため終了を待つ

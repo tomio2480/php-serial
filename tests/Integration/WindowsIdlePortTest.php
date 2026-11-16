@@ -16,8 +16,11 @@ use RuntimeException;
  *
  * WINDOWS_IDLE_PORT に、対になるポートを誰も開いていない com0com のポートを指定したときだけ実行する。
  * serdevmock を止めた状態の COM10 が当たる。手順は docs/INTEGRATION_TESTING.md を参照する。
+ *
+ * integration グループには入れない。Linux / macOS の CI は integration グループを
+ * --fail-on-skipped で流すため、Windows 専用のこの試験が skip されると失敗になる。
  */
-#[Group('integration')]
+#[Group('windows-idle-port')]
 final class WindowsIdlePortTest extends TestCase
 {
     private const ENV_PORT = 'WINDOWS_IDLE_PORT';

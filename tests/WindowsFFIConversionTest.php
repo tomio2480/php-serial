@@ -8,6 +8,7 @@ use PhpSerial\Configuration;
 use PhpSerial\Platform\WindowsFFI;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Configuration の値を Windows API の構造体の値へ写す規則を確かめる。
@@ -55,5 +56,21 @@ class WindowsFFIConversionTest extends TestCase
     public function testWriteTimeoutMultiplierCoversOneCharacterTime(int $baudRate, int $expectedMs): void
     {
         $this->assertSame($expectedMs, WindowsFFI::writeTimeoutMultiplierMs($baudRate));
+    }
+
+    public function testUnsupportedStopBitsAreRejected(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported stop bits: 3');
+
+        WindowsFFI::toDcbStopBits(3);
+    }
+
+    public function testNonPositiveBaudRateIsRejected(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Baud rate must be positive: 0');
+
+        WindowsFFI::writeTimeoutMultiplierMs(0);
     }
 }

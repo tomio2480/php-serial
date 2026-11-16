@@ -31,9 +31,10 @@ class WindowsFFI implements PlatformInterface
     /**
      * プロセス内で共有する FFI インスタンス。
      *
-     * インスタンスごとに FFI::cdef() し、先に作った方を破棄すると、
-     * 後から作った方で DCB のフィールドの型が壊れる事象を確認した。
-     * 一度だけ作って保持し続け、破棄させない。
+     * インスタンスごとに FFI::cdef() していた頃、PHPUnit で同じプロセスの 2 件目のテストが
+     * ポートを開くと、DCB のフィールドへの代入で FFI\Exception が出た。
+     * 原因は特定できていない（PHPUnit の外では再現しなかった）。
+     * 回避策として一度だけ作って保持し続け、破棄させない。
      */
     private static ?FFI $sharedFfi = null;
 
@@ -241,7 +242,10 @@ class WindowsFFI implements PlatformInterface
         $timeouts->WriteTotalTimeoutMultiplier = self::writeTimeoutMultiplierMs($config->getBaudRate());
         $timeouts->WriteTotalTimeoutConstant = self::WRITE_TIMEOUT_MARGIN_MS;
 
-        $this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts));
+        // 失敗を見逃すと書き込みの上限が無いままになるため、例外にする
+        if (!$this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts))) {
+            throw new RuntimeException('Failed to set COM timeouts');
+        }
     }
 
     /**
@@ -270,6 +274,10 @@ class WindowsFFI implements PlatformInterface
      */
     public static function writeTimeoutMultiplierMs(int $baudRate): int
     {
+        if ($baudRate < 1) {
+            throw new RuntimeException(sprintf('Baud rate must be positive: %d', $baudRate));
+        }
+
         return max(1, intdiv(self::MAX_BITS_PER_CHARACTER * 1000 + $baudRate - 1, $baudRate));
     }
 

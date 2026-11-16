@@ -107,7 +107,7 @@ serdevmock を止めると、COM10 は「相手が読まないポート」にな
 
 ```powershell
 $env:WINDOWS_IDLE_PORT = 'COM10'
-vendor\bin\phpunit --group integration --testdox --filter WindowsIdlePortTest
+vendor\bin\phpunit --group windows-idle-port --testdox
 ```
 
 `.env` に `WINDOWS_IDLE_PORT=COM10` と書いても指定できます。

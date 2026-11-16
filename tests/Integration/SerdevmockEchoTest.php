@@ -21,6 +21,11 @@ final class SerdevmockEchoTest extends TestCase
 {
     private const ENV_PORT = 'SERDEVMOCK_PORT';
 
+    // tests/fixtures/serdevmock/echo.json の baudrate と合わせる
+    private const BAUD_RATE = 9600;
+
+    private const DRAIN_MS = 100;
+
     private const TIMEOUT_MS = 2000;
 
     private const POLL_INTERVAL_US = 10000;
@@ -36,8 +41,9 @@ final class SerdevmockEchoTest extends TestCase
             $this->markTestSkipped(self::ENV_PORT . ' が未設定のため、serdevmock との結合テストを飛ばす');
         }
 
-        $this->port = new SerialPort($device, new Configuration(baudRate: 9600));
+        $this->port = new SerialPort($device, new Configuration(baudRate: self::BAUD_RATE));
         $this->port->open();
+        $this->drain();
     }
 
     protected function tearDown(): void
@@ -74,6 +80,20 @@ final class SerdevmockEchoTest extends TestCase
         $this->assertNotNull($this->port);
 
         return $this->port;
+    }
+
+    /**
+     * 前のテストが読み残したエコーを捨て、テスト同士が干渉しないようにする。
+     */
+    private function drain(): void
+    {
+        $deadline = microtime(true) + self::DRAIN_MS / 1000;
+
+        while (microtime(true) < $deadline) {
+            if ($this->openPort()->read() === '') {
+                usleep(self::POLL_INTERVAL_US);
+            }
+        }
     }
 
     /**

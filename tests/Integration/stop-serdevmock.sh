@@ -11,7 +11,14 @@ for name in serdevmock socat; do
   pid_file="$workdir/$name.pid"
 
   if [[ -f $pid_file ]]; then
-    kill "$(cat "$pid_file")" 2>/dev/null || true
+    pid=$(cat "$pid_file")
+    kill "$pid" 2>/dev/null || true
+
+    # 別のシェルが起動したプロセスは wait できないため、終了を短く待ってからログを読む
+    for _ in $(seq 20); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
   fi
 
   if [[ -f $workdir/$name.log ]]; then

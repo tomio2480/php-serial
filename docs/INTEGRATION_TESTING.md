@@ -18,14 +18,15 @@ Linux は CI で毎回、macOS は CI で週 1 回、Windows は手元で確か�
 
 ## 🧭 仕組み
 
-[serdevmock](https://github.com/tomio2480/serdevmock) は、シリアル機器の側を演じる Python 製のツールです。
+[serdevmock](https://github.com/tomio2480/serdevmock) は Python 製のツールです。
+シリアル機器の側を演じます。
 仮想ポートを作る機能は持たないため、OS ごとの道具で対を作ります。
 
 ```text
 php-serial → ポート A ⇔（仮想ポートの対）⇔ ポート B ← serdevmock
 ```
 
-図 1. 結合テストの構成。php-serial と serdevmock が仮想ポートの対の両端につながる
+図 1. 仮想ポートの対の両端につながる php-serial と serdevmock
 
 serdevmock には `tests/fixtures/serdevmock/echo.json` を読ませます。
 受け取ったデータをそのまま送り返すエコーモードの設定です。
@@ -73,7 +74,10 @@ serdevmock はポートを開くときに受信バッファを捨てるため、
 ## 🪟 Windows
 
 com0com で COM10 と COM11 の対を作っておきます。
-作り方は serdevmock の [VIRTUAL_PORTS.md](https://github.com/tomio2480/serdevmock/blob/main/docs/VIRTUAL_PORTS.md) を参照してください。
+作り方は serdevmock の手順書を参照してください。
+
+- [VIRTUAL_PORTS.md](https://github.com/tomio2480/serdevmock/blob/main/docs/VIRTUAL_PORTS.md)
+
 PHP では FFI を有効にしておきます（[WINDOWS_FFI_SETUP.md](WINDOWS_FFI_SETUP.md)）。
 
 serdevmock は venv へ入れると、ほかの Python 環境を汚しません。
@@ -117,6 +121,6 @@ Windows の FFI 実装では、次の問題を確認しています。
 直すまでは、テストを 1 件ずつ流すと結果が安定します（`--filter` を使います）。
 
 1. 書き込みのタイムアウトが無いため、相手が読まないと `write()` が戻りません。
-2. 同じプロセスで 2 件目のテストがポートを開くと、`FFI\Exception` が出ることがあります。
+2. 同じプロセスの 2 件目のテストでポートを開くと、`FFI\Exception` の出る場合があります。
    1 件ずつ流すと通り、PHPUnit の外で開閉を繰り返しても通ります。
-3. 2 の例外が出ると COM ポートのハンドルが閉じられず、以降のテストはポートを開けません。
+3. 2 の例外が出ると、COM ポートのハンドルは閉じられずに残ります。以降のテストはポートを開けません。

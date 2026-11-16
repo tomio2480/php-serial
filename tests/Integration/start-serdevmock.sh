@@ -33,13 +33,20 @@ if [[ ! -e $app_link || ! -e $mock_link ]]; then
   exit 1
 fi
 
+# 実在するデバイスを上書きしないよう、別名を張る先は未使用か既存の別名に限る
+if [[ -e $device && ! -L $device ]]; then
+  echo "$device は実在するデバイスのため別名を張らない。ほかの名前を指定する" >&2
+  exit 1
+fi
+
 pty=$(readlink "$app_link")
 sudo ln -sfn "$pty" "$device"
 echo "php-serial 側: $device -> $pty"
 
 PYTHONUNBUFFERED=1 serdevmock --protocol uart --port "$mock_link" --config "$config" \
   >"$workdir/serdevmock.log" 2>&1 &
-echo $! >"$workdir/serdevmock.pid"
+serdevmock_pid=$!
+echo "$serdevmock_pid" >"$workdir/serdevmock.pid"
 
 # serdevmock はポートを開くときに受信バッファを捨てる。
 # 開き終える前に送ったデータは失われるため、エコーが返るまで確かめてから戻る。
@@ -47,6 +54,11 @@ exec 3<>"$app_link"
 ready=false
 
 for i in $(seq 30); do
+  # 起動直後に落ちた場合は、待ち続けずに打ち切る
+  if ! kill -0 "$serdevmock_pid" 2>/dev/null; then
+    break
+  fi
+
   printf 'probe-%s\n' "$i" >&3
 
   while IFS= read -r -t 1 line <&3; do

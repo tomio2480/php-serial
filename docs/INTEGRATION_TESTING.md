@@ -6,7 +6,8 @@
 実機を使わずに、ポートを開いて送受信するまでを確かめる手順をまとめます。
 仮想ポートの対を作り、片側で serdevmock を動かします。
 もう片側を php-serial で開き、送ったデータがそのまま返るかを確かめます。
-Linux は CI で毎回、macOS は CI で週 1 回、Windows は手元で確かめます。
+Linux は CI で毎回、macOS と Windows は CI で週 1 回確かめます。
+Windows は手元でも確かめられます。
 
 ## 📑 目次
 
@@ -41,7 +42,7 @@ serdevmock には `tests/fixtures/serdevmock/echo.json` を読ませます。
 |---|---|---|
 | Linux | socat | CI（push と PR ごと） |
 | macOS | socat | CI（手動、週 1 回、関係する PR） |
-| Windows | com0com | 手元 |
+| Windows | com0com | CI（手動、週 1 回、関係する PR）と手元 |
 
 ## 🐧 Linux と macOS
 
@@ -100,6 +101,17 @@ vendor\bin\phpunit --group integration --testdox
 
 `.env` に `SERDEVMOCK_PORT=COM10` と書いても指定できます。
 
+serdevmock を別のターミナルで動かす代わりに、起動スクリプトも使えます。
+CI と同じく、エコーが返るのを確かめてから戻ります。
+
+```powershell
+pwsh tests\Integration\start-serdevmock.ps1 -AppPort COM10 -MockPort COM11 -WorkDir $env:TEMP\serdevmock -Serdevmock .\.venv-serdevmock\Scripts\serdevmock.exe
+```
+
+```powershell
+pwsh tests\Integration\stop-serdevmock.ps1 -WorkDir $env:TEMP\serdevmock
+```
+
 ### 相手が読まないポートでの試験
 
 serdevmock を止めると、COM10 は「相手が読まないポート」になります。
@@ -116,23 +128,49 @@ serdevmock の試験と同時には指定しないでください。
 
 ## ⚙ CI での扱い
 
-Linux は `.github/workflows/integration.yml` で、push と PR のたびに実行します。
-macOS は `.github/workflows/integration-macos.yml` で実行します。
+表 2. OS ごとのワークフローと実行の機会
+
+| OS | ワークフロー | 実行の機会 |
+|---|---|---|
+| Linux | `integration.yml` | push と PR のたび |
+| macOS | `integration-macos.yml` | 手動、週 1 回、関係する PR |
+| Windows | `integration-windows.yml` | 手動、週 1 回、関係する PR |
+
+ワークフローは `.github/workflows/` にあります。
 macOS ランナーは空き待ちが 10 分前後になることがあるため、実行の機会を絞っています。
+Windows もドライバーの導入を伴うため、macOS に合わせています。
+どちらも次の機会に実行します。
 
 - 手動実行（`workflow_dispatch`）
 - 毎週月曜 03:00（日本時間）
-- 結合テストの仕組みか `Unix.php` を変えた PR
+- 結合テストの仕組みか、その OS のプラットフォーム実装を変えた PR
 
-どちらも `--fail-on-skipped` と `--fail-on-empty-test-suite` を付けて実行します。
+関係する PR の判定には、macOS は `Unix.php`、Windows は `Windows.php` と `WindowsFFI.php` を使います。
+
+いずれも `--fail-on-skipped` と `--fail-on-empty-test-suite` を付けて実行します。
 環境変数の設定漏れで全件が skip されたまま、緑になるのを防ぐためです。
+
+### 🪟 Windows ランナーでの com0com
+
+Windows のジョブは、com0com 3.0.0.0 の署名版を SourceForge から取得します。
+SHA256 を照合してから、インストーラーを `/S` で非対話のまま実行します。
+続けて `setupc.exe` で COM10 と COM11 の対を作ります。
+
+このドライバーは 2016 年の証明書で署名されています。
+Secure Boot が有効な Windows 10 以降では、読み込みを拒まれることがあります。
+GitHub のホストランナーは Secure Boot が無効のため、そのまま読み込めます。
+ランナーの構成が変わって導入に失敗したときは、この点を最初に疑ってください。
+
+ジョブは 2 段で試験します。
+まず serdevmock を COM11 で動かし、COM10 で `integration` グループを流します。
+次に serdevmock を止め、COM10 で `windows-idle-port` グループを流します。
 
 ## 🔍 この試験で見つけた問題
 
 Windows の FFI 実装で、次の問題を見つけて直しました。
 同じ問題が戻ってきたときは、ここに挙げたテストが失敗します。
 
-表 2. 見つけた問題と、それを確かめるテスト
+表 3. 見つけた問題と、それを確かめるテスト
 
 | 問題 | 確かめるテスト |
 |---|---|

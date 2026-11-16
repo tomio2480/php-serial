@@ -81,6 +81,18 @@ jobs:
 
         Expand-Archive -Path $zip -DestinationPath (Join-Path $work 'zip')
         $setup = Join-Path $work "zip\$env:COM0COM_SETUP"
+
+        # 発行元を信頼済みにしておかないと、ドライバー導入の確認ダイアログで止まる。
+        # 使い捨てのランナーに限った操作であり、手元では行わない
+        $cert = (Get-AuthenticodeSignature $setup).SignerCertificate
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
+        $store.Open('ReadWrite')
+        try {
+          $store.Add($cert)
+        } finally {
+          $store.Close()
+        }
+
         $p = Start-Process -FilePath $setup -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
         if ($p.ExitCode -ne 0) {
           throw "com0com のインストーラーが失敗した: $($p.ExitCode)"

@@ -17,7 +17,7 @@
 
 ### 必要な環境
 
-- PHP 8.1 以上
+- PHP 8.2 以上
 - Composer
 - Git
 
@@ -126,7 +126,7 @@ composer qa
 
 Pull Request の作成時と push 時に、以下が自動で実行されます。
 
-- PHP 8.1〜8.5 での動作確認
+- PHP 8.2〜8.5 での動作確認
 - Windows, Linux, macOS での動作確認
 - コード品質チェック (PSR-12, PHPStan)
 - テスト実行
@@ -162,5 +162,5 @@ FFI 関連のエラーは `phpstan.neon` で適切に無視設定されていま
 
 ### PHP-CS-Fixerでバージョン警告が出る
 
-開発環境の PHP が 8.1 より新しいと、PHP-CS-Fixer は警告を表示することがあります。
+開発環境の PHP が `composer.json` の最低バージョン（8.2）より新しいと、PHP-CS-Fixer は警告を表示します。
 これは情報提供のみで、エラーではありません。

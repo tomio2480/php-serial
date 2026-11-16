@@ -11,13 +11,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    # 開発中の PHP は不具合を含みうるため、失敗してもワークフロー全体を落とさない。
+    continue-on-error: ${{ matrix.experimental == true }}
 
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        php: ['8.2', '8.3', '8.4', '8.5']
+        php: ['8.2', '8.3', '8.4', '8.5', '8.6']
+        include:
+          # setup-php は '8.6' に PHP-8.6 ブランチの nightly を入れる。
+          # 8.6.0 の GA 後に stable へ切り替わったら、この指定を外して必須にする。
+          - php: '8.6'
+            experimental: true
 
-    name: PHP ${{ matrix.php }} - ${{ matrix.os }}
+    name: PHP ${{ matrix.php }} - ${{ matrix.os }}${{ matrix.experimental && ' (experimental)' || '' }}
 
     steps:
     - uses: actions/checkout@v7

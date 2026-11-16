@@ -1,0 +1,140 @@
+name: Integration (Windows diag)
+
+# TEMP: 原因調査用。PR 作成前に削除する。
+on:
+  push:
+    branches: [ 'claude/ci-windows-integration-*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      COM0COM_ZIP_URL: https://sourceforge.net/projects/com0com/files/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip/download
+      COM0COM_ZIP_SHA256: 6e5d4359865277430d4ae88c73fb7e648a0ed8e81aea5002478179cfcb0bb0e1
+      COM0COM_SETUP: Setup_com0com_v3.0.0.0_W7_x64_signed.exe
+      APP_PORT: COM10
+      MOCK_PORT: COM11
+      SERDEVMOCK_PORT: COM10
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+      with:
+        php-version: '8.5'
+        extensions: ffi
+        ini-values: ffi.enable=true
+        coverage: none
+
+    - run: composer install --prefer-dist --no-progress
+
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: '3.13'
+
+    - run: python -m pip install --require-hashes -r tests/Integration/requirements.txt
+
+    - name: Install com0com
+      id: com0com
+      timeout-minutes: 3
+      run: |
+        $work = Join-Path $env:RUNNER_TEMP 'com0com'
+        $installDir = Join-Path $work 'install'
+        $zip = Join-Path $work 'com0com.zip'
+        New-Item -ItemType Directory -Force $work | Out-Null
+
+        curl.exe -fsSL --retry 3 -o $zip $env:COM0COM_ZIP_URL
+        $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+        if ($hash -ne $env:COM0COM_ZIP_SHA256) {
+          throw "com0com の SHA256 が一致しない: $hash"
+        }
+
+        Expand-Archive -Path $zip -DestinationPath (Join-Path $work 'zip')
+        $setup = Join-Path $work "zip\$env:COM0COM_SETUP"
+
+        # 発行元を信頼済みにしておかないと、ドライバー導入の確認ダイアログで止まる。
+        # 使い捨てのランナーに限った操作であり、手元では行わない
+        $cert = (Get-AuthenticodeSignature $setup).SignerCertificate
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
+        $store.Open('ReadWrite')
+        try {
+          $store.Add($cert)
+        } finally {
+          $store.Close()
+        }
+
+        $p = Start-Process -FilePath $setup -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+        if ($p.ExitCode -ne 0) {
+          throw "com0com のインストーラーが失敗した: $($p.ExitCode)"
+        }
+
+        Push-Location $installDir
+        try {
+          .\setupc.exe --silent install "PortName=$env:APP_PORT" "PortName=$env:MOCK_PORT"
+          if ($LASTEXITCODE -ne 0) {
+            throw "setupc が失敗した: $LASTEXITCODE"
+          }
+          .\setupc.exe list
+        } finally {
+          Pop-Location
+        }
+
+        $ports = [System.IO.Ports.SerialPort]::GetPortNames()
+        foreach ($name in $env:APP_PORT, $env:MOCK_PORT) {
+          if ($ports -notcontains $name) {
+            throw "$name が見つからない: $($ports -join ', ')"
+          }
+        }
+
+
+    - name: A DCB before serdevmock
+      run: php tests/Integration/diag-dcb.php COM10
+
+    - name: Start serdevmock without probe
+      run: |
+        $env:PYTHONIOENCODING = 'utf-8'
+        $env:PYTHONUNBUFFERED = '1'
+        $exe = (Get-Command serdevmock -CommandType Application).Source
+        $d = Join-Path $env:RUNNER_TEMP 'sdm'
+        New-Item -ItemType Directory -Force $d | Out-Null
+        $p = Start-Process -FilePath $exe -PassThru -NoNewWindow -WorkingDirectory tests/fixtures/serdevmock `
+          -ArgumentList '--protocol', 'uart', '--port', 'COM11', '--config', 'echo.json' `
+          -RedirectStandardOutput (Join-Path $d 'out.log') -RedirectStandardError (Join-Path $d 'err.log')
+        Start-Sleep -Seconds 6
+        "alive: $(-not $p.HasExited)"
+
+    - name: B DCB with serdevmock, no probe
+      run: php tests/Integration/diag-dcb.php COM10
+
+    - name: C phpunit, no probe
+      continue-on-error: true
+      run: php vendor/bin/phpunit --group integration --testdox
+
+    - name: D .NET probe
+      run: |
+        $a = [System.IO.Ports.SerialPort]::new('COM10', 9600)
+        $a.NewLine = "`n"; $a.ReadTimeout = 2000
+        $a.Open()
+        $a.WriteLine('probe')
+        try { "got: $($a.ReadLine())" } catch { "read failed: $_" }
+        $a.Close()
+
+    - name: E DCB after .NET probe
+      run: php tests/Integration/diag-dcb.php COM10
+
+    - name: F phpunit after .NET probe
+      continue-on-error: true
+      run: php vendor/bin/phpunit --group integration --testdox
+
+    - name: Logs
+      if: always()
+      run: Get-Content (Join-Path $env:RUNNER_TEMP 'sdm\*.log')

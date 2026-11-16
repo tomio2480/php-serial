@@ -6,6 +6,7 @@ namespace PhpSerial\Tests;
 
 use PhpSerial\Configuration;
 use PhpSerial\Platform\WindowsFFI;
+use PhpSerial\TimeoutException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -43,5 +44,22 @@ class WindowsFFIConversionTest extends TestCase
         $this->expectExceptionMessage('Unsupported stop bits: 3');
 
         WindowsFFI::toDcbStopBits(3);
+    }
+
+    public function testFullWriteReturnsLength(): void
+    {
+        $this->assertSame(64, WindowsFFI::ensureFullyWritten(64, 64, 9600));
+    }
+
+    public function testPartialWriteIsReportedAsTimeout(): void
+    {
+        // COMMTIMEOUTS の上限に達すると、WriteFile は成功を返しつつ一部だけ書いて戻る
+        try {
+            WindowsFFI::ensureFullyWritten(10, 64, 9600);
+            $this->fail('TimeoutException was not thrown');
+        } catch (TimeoutException $e) {
+            $this->assertSame(10, $e->getBytesWritten());
+            $this->assertStringContainsString('1128 ms', $e->getMessage());
+        }
     }
 }

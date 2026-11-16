@@ -296,14 +296,30 @@ class WindowsFFI implements PlatformInterface
             throw new RuntimeException('Failed to write to serial port');
         }
 
-        $written = (int) $bytesWritten->cdata;
+        return self::ensureFullyWritten(
+            (int) $bytesWritten->cdata,
+            $length,
+            ($this->config ?? new Configuration())->getBaudRate()
+        );
+    }
 
-        // COMMTIMEOUTS の上限に達すると、WriteFile は成功を返しつつ一部だけ書いて戻る
+    /**
+     * WriteFile が全量を書けたかを確かめ、書けていなければ TimeoutException を投げる。
+     *
+     * COMMTIMEOUTS の上限に達すると、WriteFile は成功を返しつつ一部だけ書いて戻る。
+     *
+     * @internal テストから判定を確かめるために公開している。
+     */
+    public static function ensureFullyWritten(int $written, int $length, int $baudRate): int
+    {
         if ($written < $length) {
-            $budgetMs = WriteDeadline::budgetMs($length, ($this->config ?? new Configuration())->getBaudRate());
-
             throw new TimeoutException(
-                sprintf('Write timed out after %d ms: wrote %d of %d bytes', $budgetMs, $written, $length),
+                sprintf(
+                    'Write timed out after %d ms: wrote %d of %d bytes',
+                    WriteDeadline::budgetMs($length, $baudRate),
+                    $written,
+                    $length
+                ),
                 $written
             );
         }

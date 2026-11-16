@@ -122,8 +122,10 @@ class Unix implements PlatformInterface
                 $wholeSeconds = (int) $seconds;
                 $microseconds = (int) (($seconds - $wholeSeconds) * 1_000_000);
 
-                // シグナルで中断されても、呼び出し元が期限を確かめて書き直す
-                stream_select($read, $write, $except, $wholeSeconds, $microseconds);
+                // シグナルで中断（EINTR）されると、stream_select は警告を出して false を返す。
+                // 警告を例外へ変える環境で write() が抜けないよう抑止する。
+                // 待機の失敗は無視してよい。呼び出し元が期限を確かめて書き直す
+                @stream_select($read, $write, $except, $wholeSeconds, $microseconds);
             },
             static fn (): float => microtime(true)
         );

@@ -19,9 +19,8 @@ jobs:
       COM0COM_ZIP_URL: https://sourceforge.net/projects/com0com/files/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip/download
       COM0COM_ZIP_SHA256: 6e5d4359865277430d4ae88c73fb7e648a0ed8e81aea5002478179cfcb0bb0e1
       COM0COM_SETUP: Setup_com0com_v3.0.0.0_W7_x64_signed.exe
-      APP_PORT: COM10
-      MOCK_PORT: COM11
-      SERDEVMOCK_PORT: COM10
+      APP_PORT: COM20
+      MOCK_PORT: COM21
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,45 +95,78 @@ jobs:
         }
 
 
-    - name: A DCB before serdevmock
+    - name: Create Ports class pair COM10-COM11
+      timeout-minutes: 3
+      working-directory: D:\a\_temp\com0com\install
+      run: |
+        .\setupc.exe --silent install PortName=COM# PortName=COM#
+        .\setupc.exe list
+        .\setupc.exe --silent change CNCA1 RealPortName=COM10
+        .\setupc.exe --silent change CNCB1 RealPortName=COM11
+        .\setupc.exe list
+        [System.IO.Ports.SerialPort]::GetPortNames()
+        Get-PnpDevice -Class Ports, CNCPorts | Format-Table Status, Class, FriendlyName -AutoSize
+
+    - name: V1 DCB before serdevmock (Ports class)
+      timeout-minutes: 1
       run: php tests/Integration/diag-dcb.php COM10
 
-    - name: Start serdevmock without probe
+    - name: V1 start serdevmock on COM11
       run: |
         $env:PYTHONIOENCODING = 'utf-8'
         $env:PYTHONUNBUFFERED = '1'
         $exe = (Get-Command serdevmock -CommandType Application).Source
-        $d = Join-Path $env:RUNNER_TEMP 'sdm'
+        $d = Join-Path $env:RUNNER_TEMP 'sdm1'
         New-Item -ItemType Directory -Force $d | Out-Null
-        $p = Start-Process -FilePath $exe -PassThru -NoNewWindow -WorkingDirectory tests/fixtures/serdevmock `
+        Start-Process -FilePath $exe -NoNewWindow -WorkingDirectory tests/fixtures/serdevmock `
           -ArgumentList '--protocol', 'uart', '--port', 'COM11', '--config', 'echo.json' `
           -RedirectStandardOutput (Join-Path $d 'out.log') -RedirectStandardError (Join-Path $d 'err.log')
-        Start-Sleep -Seconds 6
-        "alive: $(-not $p.HasExited)"
+        Start-Sleep -Seconds 5
 
-    - name: B DCB with serdevmock, no probe
+    - name: V1 DCB with serdevmock (Ports class)
+      timeout-minutes: 1
       run: php tests/Integration/diag-dcb.php COM10
 
-    - name: C phpunit, no probe
+    - name: V1 phpunit (Ports class)
       continue-on-error: true
+      timeout-minutes: 3
+      env:
+        SERDEVMOCK_PORT: COM10
       run: php vendor/bin/phpunit --group integration --testdox
 
-    - name: D .NET probe
+    - name: V2 start serdevmock on COM21
       run: |
-        $a = [System.IO.Ports.SerialPort]::new('COM10', 9600)
-        $a.NewLine = "`n"; $a.ReadTimeout = 2000
-        $a.Open()
-        $a.WriteLine('probe')
-        try { "got: $($a.ReadLine())" } catch { "read failed: $_" }
-        $a.Close()
+        $env:PYTHONIOENCODING = 'utf-8'
+        $env:PYTHONUNBUFFERED = '1'
+        $exe = (Get-Command serdevmock -CommandType Application).Source
+        $d = Join-Path $env:RUNNER_TEMP 'sdm2'
+        New-Item -ItemType Directory -Force $d | Out-Null
+        Start-Process -FilePath $exe -NoNewWindow -WorkingDirectory tests/fixtures/serdevmock `
+          -ArgumentList '--protocol', 'uart', '--port', 'COM21', '--config', 'echo.json' `
+          -RedirectStandardOutput (Join-Path $d 'out.log') -RedirectStandardError (Join-Path $d 'err.log')
+        Start-Sleep -Seconds 5
 
-    - name: E DCB after .NET probe
-      run: php tests/Integration/diag-dcb.php COM10
+    - name: V2 DCB with serdevmock (CNCPorts)
+      timeout-minutes: 1
+      run: php tests/Integration/diag-dcb.php COM20
 
-    - name: F phpunit after .NET probe
+    - name: V2 mode to disable flow control
+      timeout-minutes: 1
+      run: |
+        mode COM20: BAUD=9600 PARITY=n DATA=8 STOP=1 octs=off odsr=off dtr=on rts=on idsr=off
+        php tests/Integration/diag-dcb.php COM20
+
+    - name: V2 phpunit (CNCPorts + mode)
       continue-on-error: true
+      timeout-minutes: 3
+      env:
+        SERDEVMOCK_PORT: COM20
       run: php vendor/bin/phpunit --group integration --testdox
 
     - name: Logs
       if: always()
-      run: Get-Content (Join-Path $env:RUNNER_TEMP 'sdm\*.log')
+      run: |
+        Get-ChildItem (Join-Path $env:RUNNER_TEMP 'sdm*') -Recurse -File | ForEach-Object {
+          "----- $($_.FullName)"
+          Get-Content $_.FullName -Encoding utf8
+        }

@@ -7,6 +7,7 @@ namespace PhpSerial\Platform;
 use FFI;
 use PhpSerial\Configuration;
 use RuntimeException;
+use Throwable;
 
 /**
  * Windows implementation using FFI to call Windows API directly
@@ -16,6 +17,26 @@ class WindowsFFI implements PlatformInterface
 {
     // CreateFileA が失敗時に返す値（(HANDLE)-1）
     private const INVALID_HANDLE_VALUE = -1;
+
+    // DCB.StopBits の値（winbase.h の ONESTOPBIT と TWOSTOPBITS）
+    private const DCB_ONESTOPBIT = 0;
+    private const DCB_TWOSTOPBITS = 2;
+
+    // 1 文字の最大ビット数（スタート 1・データ 8・パリティ 1・ストップ 2）
+    private const MAX_BITS_PER_CHARACTER = 12;
+
+    // 書き込みの上限に足す固定の余裕。相手が読まないときは、この程度で諦める
+    private const WRITE_TIMEOUT_MARGIN_MS = 1000;
+
+    /**
+     * プロセス内で共有する FFI インスタンス。
+     *
+     * インスタンスごとに FFI::cdef() していた頃、PHPUnit で同じプロセスの 2 件目のテストが
+     * ポートを開くと、DCB のフィールドへの代入で FFI\Exception が出た。
+     * 原因は特定できていない（PHPUnit の外では再現しなかった）。
+     * 回避策として一度だけ作って保持し続け、破棄させない。
+     */
+    private static ?FFI $sharedFfi = null;
 
     private ?FFI $ffi = null;
     private mixed $handle = null;
@@ -34,6 +55,12 @@ class WindowsFFI implements PlatformInterface
     private function initFFI(): void
     {
         if ($this->ffi !== null) {
+            return;
+        }
+
+        if (self::$sharedFfi !== null) {
+            $this->ffi = self::$sharedFfi;
+
             return;
         }
 
@@ -111,7 +138,8 @@ class WindowsFFI implements PlatformInterface
                      DWORD* lpNumberOfBytesWritten, void* lpOverlapped);
         CDEF;
 
-        $this->ffi = FFI::cdef($code, 'kernel32.dll');
+        self::$sharedFfi = FFI::cdef($code, 'kernel32.dll');
+        $this->ffi = self::$sharedFfi;
     }
 
     public function configure(string $device, Configuration $config): void
@@ -154,7 +182,15 @@ class WindowsFFI implements PlatformInterface
 
         // Apply configuration immediately after opening
         if ($this->config !== null) {
-            $this->applyConfiguration($this->config);
+            try {
+                $this->applyConfiguration($this->config);
+            } catch (Throwable $e) {
+                // 排他で開いたハンドルを残すと、同じポートを二度と開けなくなる
+                $this->ffi->CloseHandle($handle);
+                $this->handle = null;
+
+                throw $e;
+            }
         }
 
         return $handle;
@@ -190,23 +226,59 @@ class WindowsFFI implements PlatformInterface
         ];
         $dcb->Parity = $parityMap[$config->getParity()] ?? 0;
 
-        // Stop bits (0 = 1 bit, 2 = 2 bits)
-        $dcb->StopBits = $config->getStopBits() - 1;
+        $dcb->StopBits = self::toDcbStopBits($config->getStopBits());
 
         // Apply settings
         if (!$this->ffi->SetCommState($this->handle, FFI::addr($dcb))) {
             throw new RuntimeException('Failed to set COM state');
         }
 
-        // Set timeouts for non-blocking reads
+        // 読み込みはすぐ戻す。書き込みは送信にかかる時間に余裕を足した上限を設ける
+        // （0 にすると上限が無くなり、相手が読まないと WriteFile が戻らない）
         $timeouts = $this->ffi->new('COMMTIMEOUTS');
         $timeouts->ReadIntervalTimeout = 1;
         $timeouts->ReadTotalTimeoutMultiplier = 0;
         $timeouts->ReadTotalTimeoutConstant = 1;
-        $timeouts->WriteTotalTimeoutMultiplier = 0;
-        $timeouts->WriteTotalTimeoutConstant = 0;
+        $timeouts->WriteTotalTimeoutMultiplier = self::writeTimeoutMultiplierMs($config->getBaudRate());
+        $timeouts->WriteTotalTimeoutConstant = self::WRITE_TIMEOUT_MARGIN_MS;
 
-        $this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts));
+        // 失敗を見逃すと書き込みの上限が無いままになるため、例外にする
+        if (!$this->ffi->SetCommTimeouts($this->handle, FFI::addr($timeouts))) {
+            throw new RuntimeException('Failed to set COM timeouts');
+        }
+    }
+
+    /**
+     * ストップビット数を DCB.StopBits の値へ変換する。
+     *
+     * DCB は 0 = 1 ビット、1 = 1.5 ビット、2 = 2 ビットで表す（winbase.h）。
+     * ビット数から 1 を引くと、2 ビットが 1.5 ビットになってしまう。
+     *
+     * @internal テストから変換規則を確かめるために公開している。
+     */
+    public static function toDcbStopBits(int $stopBits): int
+    {
+        return match ($stopBits) {
+            Configuration::STOP_BITS_1 => self::DCB_ONESTOPBIT,
+            Configuration::STOP_BITS_2 => self::DCB_TWOSTOPBITS,
+            default => throw new RuntimeException(sprintf('Unsupported stop bits: %d', $stopBits)),
+        };
+    }
+
+    /**
+     * 1 文字の送信にかかる最大時間（ミリ秒、切り上げ）を返す。
+     *
+     * COMMTIMEOUTS.WriteTotalTimeoutMultiplier に使う。
+     *
+     * @internal テストから計算規則を確かめるために公開している。
+     */
+    public static function writeTimeoutMultiplierMs(int $baudRate): int
+    {
+        if ($baudRate < 1) {
+            throw new RuntimeException(sprintf('Baud rate must be positive: %d', $baudRate));
+        }
+
+        return max(1, intdiv(self::MAX_BITS_PER_CHARACTER * 1000 + $baudRate - 1, $baudRate));
     }
 
     public function close(mixed $handle): void

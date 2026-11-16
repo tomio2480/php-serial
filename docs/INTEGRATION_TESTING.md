@@ -14,7 +14,7 @@ Linux は CI で毎回、macOS は CI で週 1 回、Windows は手元で確か�
 - 🐧 Linux と macOS
 - 🪟 Windows
 - ⚙ CI での扱い
-- ⚠ 既知の問題
+- 🔍 この試験で見つけた問題
 
 ## 🧭 仕組み
 
@@ -99,8 +99,20 @@ vendor\bin\phpunit --group integration --testdox
 ```
 
 `.env` に `SERDEVMOCK_PORT=COM10` と書いても指定できます。
-serdevmock を起動する前にテストを流さないでください。
-相手が読まないと、`write()` が戻らなくなります（既知の問題 1）。
+
+### 相手が読まないポートでの試験
+
+serdevmock を止めると、COM10 は「相手が読まないポート」になります。
+この状態で、書き込みの時間の上限と、失敗後の後始末を確かめます。
+
+```powershell
+$env:WINDOWS_IDLE_PORT = 'COM10'
+vendor\bin\phpunit --group windows-idle-port --testdox
+```
+
+`.env` に `WINDOWS_IDLE_PORT=COM10` と書いても指定できます。
+serdevmock の試験と同時には指定しないでください。
+片方は相手が読む前提、もう片方は読まない前提のためです。
 
 ## ⚙ CI での扱い
 
@@ -115,12 +127,16 @@ macOS ランナーは空き待ちが 10 分前後になることがあるため�
 どちらも `--fail-on-skipped` と `--fail-on-empty-test-suite` を付けて実行します。
 環境変数の設定漏れで全件が skip されたまま、緑になるのを防ぐためです。
 
-## ⚠ 既知の問題
+## 🔍 この試験で見つけた問題
 
-Windows の FFI 実装では、次の問題を確認しています。
-直すまでは、テストを 1 件ずつ流すと結果が安定します（`--filter` を使います）。
+Windows の FFI 実装で、次の問題を見つけて直しました。
+同じ問題が戻ってきたときは、ここに挙げたテストが失敗します。
 
-1. 書き込みのタイムアウトが無いため、相手が読まないと `write()` が戻りません。
-2. 同じプロセスの 2 件目のテストでポートを開くと、`FFI\Exception` の出る場合があります。
-   1 件ずつ流すと通り、PHPUnit の外で開閉を繰り返しても通ります。
-3. 2 の例外が出ると、COM ポートのハンドルは閉じられずに残ります。以降のテストはポートを開けません。
+表 2. 見つけた問題と、それを確かめるテスト
+
+| 問題 | 確かめるテスト |
+|---|---|
+| 相手が読まないと `write()` が戻らない | `WindowsIdlePortTest` |
+| 同じプロセスで 2 回目に開くと `FFI\Exception` が出る | `SerdevmockEchoTest`（3 件をまとめて流す） |
+| 設定に失敗すると COM ポートのハンドルが残る | `WindowsIdlePortTest` |
+| ストップビット 2 が 1.5 として設定される | `WindowsFFIConversionTest` |

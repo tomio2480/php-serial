@@ -1,0 +1,92 @@
+name: Integration (Windows trial)
+
+# 試行用。ホストランナーへ com0com のドライバーを非対話で入れられるかを確かめる。
+# 確かめ終えたら削除する。
+on:
+  push:
+    branches: [ 'claude/ci-windows-integration-*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  com0com:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      COM0COM_ZIP_URL: https://sourceforge.net/projects/com0com/files/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip/download
+      COM0COM_ZIP_SHA256: 6e5d4359865277430d4ae88c73fb7e648a0ed8e81aea5002478179cfcb0bb0e1
+      COM0COM_DIR: C:\com0com
+
+    steps:
+    - name: Diagnostics
+      run: |
+        Get-CimInstance Win32_OperatingSystem | Format-List Caption, Version, BuildNumber
+        try { "SecureBoot: $(Confirm-SecureBootUEFI)" } catch { "SecureBoot: $($_.Exception.Message)" }
+        bcdedit /enum '{current}' | Select-String -Pattern 'testsigning|nointegritychecks|hypervisor'
+        whoami /groups | Select-String -Pattern 'Administrators|Mandatory Label'
+        [System.IO.Ports.SerialPort]::GetPortNames()
+
+    - name: Download com0com
+      run: |
+        $work = Join-Path $env:RUNNER_TEMP 'com0com-dl'
+        New-Item -ItemType Directory -Force $work | Out-Null
+        $zip = Join-Path $work 'com0com.zip'
+        curl.exe -fsSL --retry 3 -o $zip $env:COM0COM_ZIP_URL
+        $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+        if ($hash -ne $env:COM0COM_ZIP_SHA256) { throw "SHA256 が一致しない: $hash" }
+        Expand-Archive -Path $zip -DestinationPath (Join-Path $work 'x')
+        $setup = Join-Path $work 'x\Setup_com0com_v3.0.0.0_W7_x64_signed.exe'
+        $sig = Get-AuthenticodeSignature $setup
+        "$($sig.Status) $($sig.SignerCertificate.Subject)"
+        "SETUP_EXE=$setup" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+    - name: Trust publisher
+      run: |
+        $cert = (Get-AuthenticodeSignature $env:SETUP_EXE).SignerCertificate
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
+        $store.Open('ReadWrite')
+        $store.Add($cert)
+        $store.Close()
+        "trusted: $($cert.Thumbprint)"
+
+    - name: Install com0com (silent)
+      timeout-minutes: 3
+      run: |
+        $p = Start-Process -FilePath $env:SETUP_EXE -ArgumentList '/S', "/D=$env:COM0COM_DIR" -Wait -PassThru
+        "setup exit: $($p.ExitCode)"
+        Get-ChildItem $env:COM0COM_DIR
+
+    - name: Create port pair
+      timeout-minutes: 3
+      working-directory: C:\com0com
+      run: |
+        .\setupc.exe --silent install PortName=COM10 PortName=COM11
+        "setupc exit: $LASTEXITCODE"
+        .\setupc.exe list
+
+    - name: Device status
+      if: always()
+      run: |
+        Get-PnpDevice -Class Ports, CNCPorts -ErrorAction SilentlyContinue |
+          Format-Table Status, Class, FriendlyName, InstanceId -AutoSize
+        Get-CimInstance Win32_PnPEntity |
+          Where-Object { $_.Name -match 'com0com' } |
+          Format-Table Name, ConfigManagerErrorCode, Status -AutoSize
+        [System.IO.Ports.SerialPort]::GetPortNames()
+
+    - name: Loopback check
+      timeout-minutes: 2
+      run: |
+        $a = [System.IO.Ports.SerialPort]::new('COM10', 115200)
+        $b = [System.IO.Ports.SerialPort]::new('COM11', 115200)
+        $a.ReadTimeout = 3000; $b.ReadTimeout = 3000
+        $a.Open(); $b.Open()
+        $a.WriteLine('ping')
+        $got = $b.ReadLine()
+        $a.Close(); $b.Close()
+        "received: $got"
+        if ($got.Trim() -ne 'ping') { throw 'loopback failed' }

@@ -9,7 +9,7 @@ use RuntimeException;
 
 class Unix implements PlatformInterface
 {
-    private function validateDevice(string $device): void
+    private static function validateDevice(string $device): void
     {
         // D 修飾子: $ を末尾の改行の手前で一致させない
         if (!preg_match('#^/dev/(tty(USB|ACM|S|AMA)?\d+|tty\.[a-zA-Z0-9_\-]+)$#D', $device)) {
@@ -24,7 +24,26 @@ class Unix implements PlatformInterface
 
     public function configure(string $device, Configuration $config): void
     {
-        $this->validateDevice($device);
+        exec(self::buildConfigureCommand($device, $config, PHP_OS_FAMILY), $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            throw new RuntimeException(
+                sprintf('Failed to configure serial port: %s', implode("\n", $output))
+            );
+        }
+    }
+
+    /**
+     * ポートを設定する stty のコマンドを組み立てる。
+     *
+     * デバイスを渡すオプションは GNU（Linux）が -F、BSD 系（macOS）が -f である。
+     * macOS で -F を渡すと、stty はデバイスではなく標準入力を設定しようとして失敗する。
+     *
+     * @internal テストから OS ごとの組み立てを確かめるために公開している。
+     */
+    public static function buildConfigureCommand(string $device, Configuration $config, string $osFamily): string
+    {
+        self::validateDevice($device);
         $parityMap = [
             Configuration::PARITY_NONE => '-parenb',
             Configuration::PARITY_ODD => 'parenb parodd',
@@ -39,23 +58,22 @@ class Unix implements PlatformInterface
         $parity = $parityMap[$config->getParity()];
         $stopBits = $stopBitsMap[$config->getStopBits()];
 
+        $deviceOption = $osFamily === 'Darwin' ? '-f' : '-F';
+
+        // raw -echo -iexten: 行編集・改行の変換・特殊文字（0x0F・0x16 など）の処理を止め、
+        // 受け取ったバイトをそのまま扱う。既定の端末設定ではバイナリが欠ける。
+        // macOS の raw はデータビットとパリティも上書きするため、回線の設定より前に置く。
         // セキュリティ: 数値パラメータも明示的にエスケープ
-        $command = sprintf(
-            'stty -F %s %s cs%s %s %s',
+        // 失敗の理由を例外メッセージへ残すため、標準エラー出力も受け取る
+        return sprintf(
+            'stty %s %s raw -echo -iexten %s cs%s %s %s 2>&1',
+            $deviceOption,
             escapeshellarg($device),
             escapeshellarg((string) $config->getBaudRate()),
             escapeshellarg((string) $config->getDataBits()),
             $parity,
             $stopBits
         );
-
-        exec($command, $output, $returnCode);
-
-        if ($returnCode !== 0) {
-            throw new RuntimeException(
-                sprintf('Failed to configure serial port: %s', implode("\n", $output))
-            );
-        }
     }
 
     public function open(string $device): mixed

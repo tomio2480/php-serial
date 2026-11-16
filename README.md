@@ -157,6 +157,9 @@ $port = new SerialPort('/dev/ttyACM0');
 $port = new SerialPort('/dev/tty.usbserial');
 ```
 
+Linux と macOS では、`open()` が `stty` でポートを raw モードに設定します。
+改行の変換や制御文字の解釈をせず、受け取ったバイトをそのまま扱います。
+
 ## テスト
 
 環境変数でテスト用デバイスを指定:
@@ -171,6 +174,10 @@ cp .env.example .env
 # テスト実行
 composer test
 ```
+
+実機なしで送受信を確かめる結合テストもあります。
+serdevmock と仮想ポートの対を使います。
+手順は [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) を参照してください。
 
 ## 使用例
 
